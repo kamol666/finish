@@ -458,6 +458,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     this.bot.command('start', this.handleStart.bind(this));
     this.bot.command('admin', this.handleAdminCommand.bind(this));
     this.bot.on('callback_query', this.handleCallbackQuery.bind(this));
+    this.bot.on('chat_join_request', this.handleChatJoinRequest.bind(this));
   }
 
   private async handleCallbackQuery(ctx: BotContext): Promise<void> {
@@ -826,11 +827,12 @@ ${expirationLabel} ${subscriptionEndDate}`;
         'Generating private channel invite link with channelId: ',
         config.CHANNEL_ID,
       );
-      const link = await this.bot.api.createChatInviteLink(config.CHANNEL_ID, {
-        member_limit: 1,
-        expire_date: 0,
-        creates_join_request: false,
-      });
+      const link = await this.bot.api.createChatInviteLink(
+        config.CHANNEL_ID,
+        {
+          creates_join_request: true,
+        },
+      );
       logger.info('Private channel invite link:', link.invite_link);
       return link;
     } catch (error) {
@@ -1217,6 +1219,50 @@ ${expirationLabel} ${subscriptionEndDate}`;
           error,
         });
       }
+    }
+  }
+
+  private async handleChatJoinRequest(ctx: BotContext): Promise<void> {
+    const joinRequest = ctx.chatJoinRequest;
+    if (!joinRequest) {
+      return;
+    }
+
+    const telegramId = joinRequest.from.id;
+    const chatId = joinRequest.chat.id;
+
+    try {
+      const user = await UserModel.findOne({ telegramId }).exec();
+
+      if (user && this.userHasActiveSubscription(user)) {
+        await ctx.api.approveChatJoinRequest(chatId, telegramId);
+        logger.info('Join request approved', { telegramId, chatId });
+        return;
+      }
+
+      await ctx.api.declineChatJoinRequest(chatId, telegramId);
+      logger.info('Join request declined due to inactive subscription', {
+        telegramId,
+        chatId,
+      });
+
+      try {
+        await ctx.api.sendMessage(
+          telegramId,
+          "❌ Obunangiz faol emas. Kanalga kirish uchun iltimos, obunani yangilang.",
+        );
+      } catch (error) {
+        logger.warn('Failed to notify user about declined join request', {
+          telegramId,
+          error,
+        });
+      }
+    } catch (error) {
+      logger.error('Error processing join request', {
+        telegramId,
+        chatId,
+        error,
+      });
     }
   }
 
