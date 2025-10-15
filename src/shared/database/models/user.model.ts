@@ -18,6 +18,7 @@ export interface IUserDocument extends Document {
   freeBonusReceivedAt?: Date;
   plans: IPlanDocument[];
   isKickedOut: boolean;
+  activeInviteLink?: string;
 }
 
 const userSchema = new Schema({
@@ -32,6 +33,7 @@ const userSchema = new Schema({
   hadPaidSubscriptionBeforeBonus: { type: Boolean, default: false },
   plans: [{ type: Schema.Types.ObjectId, ref: 'Plan' }],
   isKickedOut: { type: Boolean, default: false },
+  activeInviteLink: { type: String },
 });
 
 userSchema.index({ telegramId: 1, isActive: 1 });

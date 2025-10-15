@@ -27,6 +27,7 @@ interface SessionData {
   hasAgreedToTerms?: boolean;
   selectedService: string;
   mainMenuMessageId?: number;
+  pendingOnetimePlanId?: string;
 }
 
 type BotContext = Context & SessionFlavor<SessionData>;
@@ -64,6 +65,13 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     this.subscriptionChecker.start();
 
     await this.bot.start({
+      allowed_updates: [
+        'message',
+        'callback_query',
+        'chat_join_request',
+        'chat_member',
+        'my_chat_member',
+      ],
       onStart: () => {
         logger.info('Bot started');
       },
@@ -104,7 +112,12 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       );
 
       if (success) {
+        await this.revokeUserInviteLink(subscription, false);
+
         const privateLink = await this.getPrivateLink();
+        subscription.activeInviteLink = privateLink.invite_link;
+        await subscription.save();
+
         const keyboard = new InlineKeyboard()
           .url("🔗 Kanalga kirish", privateLink.invite_link)
           .row()
@@ -170,7 +183,12 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
         30
       );
 
+      await this.revokeUserInviteLink(subscription, false);
+
       const privateLink = await this.getPrivateLink();
+      subscription.activeInviteLink = privateLink.invite_link;
+      await subscription.save();
+
       const keyboard = new InlineKeyboard()
         .url("🔗 Kanalga kirish", privateLink.invite_link)
         .row()
@@ -238,12 +256,14 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
           username,
         );
 
-      if (subscription.subscriptionType !== 'onetime') {
-        subscription.subscriptionType = 'onetime';
-        await subscription.save();
-      }
+      await this.revokeUserInviteLink(subscription, false);
+
+      subscription.subscriptionType = 'onetime';
 
       const privateLink = await this.getPrivateLink();
+      subscription.activeInviteLink = privateLink.invite_link;
+      await subscription.save();
+
       const keyboard = new InlineKeyboard()
         .url('🔗 Kanalga kirish', privateLink.invite_link)
         .row()
@@ -315,7 +335,12 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
           'yulduz',
         );
 
+      await this.revokeUserInviteLink(subscription, false);
+
       const privateLink = await this.getPrivateLink();
+      subscription.activeInviteLink = privateLink.invite_link;
+      await subscription.save();
+
       const keyboard = new InlineKeyboard()
         .url('🔗 Kanalga kirish', privateLink.invite_link)
         .row()
@@ -376,7 +401,11 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
       let messageText: string = '';
 
+      await this.revokeUserInviteLink(subscription.user, false);
+
       const privateLink = await this.getPrivateLink();
+      subscription.user.activeInviteLink = privateLink.invite_link;
+      await subscription.user.save();
       const keyboard = new InlineKeyboard()
         .url('🔗 Kanalga kirish', privateLink.invite_link)
         .row()
@@ -466,6 +495,26 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
     const data = ctx.callbackQuery.data;
     if (!data) return;
+
+    if (data.startsWith('onetime|')) {
+      const [, provider] = data.split('|');
+      if (
+        provider === 'uzcard' ||
+        provider === 'payme' ||
+        provider === 'click'
+      ) {
+        await this.handleOneTimePaymentProviderSelection(
+          ctx,
+          provider as 'uzcard' | 'payme' | 'click',
+        );
+      } else {
+        await ctx.answerCallbackQuery(
+          "Noma'lum to'lov turi tanlandi.",
+          { show_alert: true },
+        );
+      }
+      return;
+    }
 
     if (data === 'main_menu') {
       ctx.session.hasAgreedToTerms = false;
@@ -649,7 +698,12 @@ ${expirationLabel} ${subscriptionEndDate}`;
       const keyboard = new InlineKeyboard();
 
       if (subscription.isActive) {
+        await this.revokeUserInviteLink(subscription, false);
+
         const privateLink = await this.getPrivateLink();
+        subscription.activeInviteLink = privateLink.invite_link;
+        await subscription.save();
+
         keyboard.row();
         keyboard.url('🔗 Kanalga kirish', privateLink.invite_link);
       } else {
@@ -779,7 +833,11 @@ ${expirationLabel} ${subscriptionEndDate}`;
             ctx.from?.username,
           );
 
+        await this.revokeUserInviteLink(subscription, false);
+
         const privateLink = await this.getPrivateLink();
+        subscription.activeInviteLink = privateLink.invite_link;
+        await subscription.save();
         const keyboard = new InlineKeyboard()
           .url('🔗 Kanalga kirish', privateLink.invite_link)
           .row()
@@ -827,15 +885,44 @@ ${expirationLabel} ${subscriptionEndDate}`;
         'Generating private channel invite link with channelId: ',
         config.CHANNEL_ID,
       );
-      const link = await this.bot.api.createChatInviteLink(
+      const expireAt = Math.floor(Date.now() / 1000) + 10 * 60; // 10 daqiqa amal qiladi
+      let link = await this.bot.api.createChatInviteLink(
         config.CHANNEL_ID,
         {
+          expire_date: expireAt,
+          member_limit: 1,
           creates_join_request: true,
         },
       );
+      if (!link) {
+        throw new Error('Invite link generation returned empty result');
+      }
       logger.info('Private channel invite link:', link.invite_link);
       return link;
     } catch (error) {
+      if (
+        typeof error === 'object' &&
+        error !== null &&
+        'description' in error &&
+        typeof (error as any).description === 'string' &&
+        (error as any).description.includes('member_limit')
+      ) {
+        logger.warn(
+          'member_limit parameter rejected. Retrying without member_limit.',
+        );
+        const fallbackLink = await this.bot.api.createChatInviteLink(
+          config.CHANNEL_ID,
+          {
+            expire_date: Math.floor(Date.now() / 1000) + 10 * 60,
+            creates_join_request: true,
+          },
+        );
+        logger.info(
+          'Private channel invite link (fallback):',
+          fallbackLink.invite_link,
+        );
+        return fallbackLink;
+      }
       logger.error('Error generating channel invite link:', error);
       throw error;
     }
@@ -1003,10 +1090,22 @@ ${expirationLabel} ${subscriptionEndDate}`;
 
       const selectedService = await this.selectedServiceChecker(ctx);
 
+      const plan = await Plan.findOne({ selectedName: selectedService });
+      if (!plan) {
+        logger.error(`No plan found with selectedService: ${selectedService}`);
+        await ctx.answerCallbackQuery(
+          "To'lov rejasi topilmadi. Iltimos, administrator bilan bog'laning.",
+          { show_alert: true },
+        );
+        return;
+      }
+
+      ctx.session.pendingOnetimePlanId = plan._id.toString();
+
       const keyboard = await this.getOneTimePaymentMethodKeyboard(
         ctx,
-        user._id as string,
-        ctx.session.selectedService,
+        plan,
+        selectedService,
       );
 
       await ctx.editMessageText(
@@ -1066,42 +1165,21 @@ ${expirationLabel} ${subscriptionEndDate}`;
 
   private async getOneTimePaymentMethodKeyboard(
     ctx: BotContext,
-    userId: string,
-    selectedService?: string,
+    _plan: IPlanDocument,
+    selectedService: string,
   ) {
-    if (selectedService == undefined) {
+    if (!selectedService) {
       await ctx.answerCallbackQuery('Iltimos, avval xizmat turini tanlang.');
       await this.showMainMenu(ctx);
       return;
     }
 
-
-    const plan = await Plan.findOne({ selectedName: selectedService });
-    if (!plan) {
-      logger.error(`No plan found with selectedService: ${selectedService}`);
-      return;
-    }
-
-    const redirectURLParams: ClickRedirectParams = {
-      userId: userId,
-      planId: plan._id as string,
-      amount: plan.price as number,
-    };
-
-    const paymeCheckoutPageLink = generatePaymeLink({
-      planId: plan._id as string,
-      amount: plan.price,
-      userId: userId,
-    });
-    const clickUrl = getClickRedirectLink(redirectURLParams);
-    const uzcardOneTimePaymentLink = `${process.env.BASE_UZCARD_ONETIME_URL}/?userId=${userId}&planId=${plan._id}&selectedService=${selectedService}`;
-
     return new InlineKeyboard()
-      .url("📲 Uzcard orqali to'lash", uzcardOneTimePaymentLink)
+      .text("📲 Uzcard orqali to'lash", this.buildOneTimePaymentCallback('uzcard'))
       .row()
-      .url("📲 Payme orqali to'lash", paymeCheckoutPageLink)
+      .text("📲 Payme orqali to'lash", this.buildOneTimePaymentCallback('payme'))
       .row()
-      .url("💳 Click orqali to'lash", clickUrl)
+      .text("💳 Click orqali to'lash", this.buildOneTimePaymentCallback('click'))
       .row()
       .text('🔙 Asosiy menyu', 'main_menu');
   }
@@ -1178,6 +1256,164 @@ ${expirationLabel} ${subscriptionEndDate}`;
         return "Siz Uzcard orqali bir martalik to'lov qilgansiz. Obuna muddati tugagach qayta urinib ko'ring.";
       default:
         return "Sizda faol obuna mavjud. Obuna muddati tugagach qayta to'lov qilishingiz mumkin.";
+    }
+  }
+
+  private buildOneTimePaymentCallback(
+    provider: 'uzcard' | 'payme' | 'click',
+  ): string {
+    return `onetime|${provider}`;
+  }
+
+  private async handleOneTimePaymentProviderSelection(
+    ctx: BotContext,
+    provider: 'uzcard' | 'payme' | 'click',
+  ): Promise<void> {
+    const telegramId = ctx.from?.id;
+
+    if (!telegramId) {
+      await ctx.answerCallbackQuery(
+        "Foydalanuvchi ma'lumotlari topilmadi. Iltimos, qayta urinib ko'ring.",
+        { show_alert: true },
+      );
+      return;
+    }
+
+    const user = await UserModel.findOne({ telegramId }).exec();
+
+    if (!user) {
+      await ctx.answerCallbackQuery(
+        "Foydalanuvchi ma'lumotlari topilmadi. Iltimos, qayta boshlang.",
+        { show_alert: true },
+      );
+      return;
+    }
+
+    if (this.userHasActiveSubscription(user)) {
+      await ctx.answerCallbackQuery(
+        'Sizda allaqachon faol obuna mavjud. Yangi to‘lov talab qilinmaydi.',
+        { show_alert: true },
+      );
+      return;
+    }
+
+    const selectedService = ctx.session.selectedService;
+
+    if (!selectedService) {
+      await ctx.answerCallbackQuery(
+        'Iltimos, avval xizmat turini tanlang.',
+        { show_alert: true },
+      );
+      await this.showMainMenu(ctx);
+      return;
+    }
+
+    let plan: IPlanDocument | null = null;
+
+    if (ctx.session.pendingOnetimePlanId) {
+      plan = await Plan.findById(ctx.session.pendingOnetimePlanId).exec();
+    }
+
+    if (!plan) {
+      plan = await Plan.findOne({ selectedName: selectedService }).exec();
+      if (!plan) {
+        await ctx.answerCallbackQuery(
+          "To'lov rejasi topilmadi. Iltimos, administrator bilan bog'laning.",
+          { show_alert: true },
+        );
+        return;
+      }
+      ctx.session.pendingOnetimePlanId = plan._id.toString();
+    }
+
+    const userId = user._id.toString();
+    let redirectUrl: string | undefined;
+
+    switch (provider) {
+      case 'uzcard': {
+        const baseUrl = process.env.BASE_UZCARD_ONETIME_URL;
+        if (!baseUrl) {
+          await ctx.answerCallbackQuery(
+            "Uzcard to'lov havolasi sozlanmagan. Iltimos, administrator bilan bog'laning.",
+            { show_alert: true },
+          );
+          return;
+        }
+        redirectUrl = `${baseUrl}/?userId=${userId}&planId=${plan._id}&selectedService=${selectedService}`;
+        break;
+      }
+      case 'payme': {
+        redirectUrl = generatePaymeLink({
+          planId: plan._id.toString(),
+          amount: plan.price,
+          userId,
+        });
+        break;
+      }
+      case 'click': {
+        const redirectURLParams: ClickRedirectParams = {
+          userId,
+          planId: plan._id.toString(),
+          amount: plan.price as number,
+        };
+        redirectUrl = getClickRedirectLink(redirectURLParams);
+        break;
+      }
+      default:
+        await ctx.answerCallbackQuery(
+          "Noma'lum to'lov turi tanlandi.",
+          { show_alert: true },
+        );
+        return;
+    }
+
+    if (!redirectUrl) {
+      await ctx.answerCallbackQuery(
+        "To'lov havolasi tayyorlanmadi. Iltimos, administrator bilan bog'laning.",
+        { show_alert: true },
+      );
+      return;
+    }
+
+    await ctx.answerCallbackQuery({
+      url: redirectUrl,
+    });
+  }
+
+  private async revokeUserInviteLink(
+    user?: IUserDocument | null,
+    save = true,
+  ): Promise<void> {
+    if (!user?.activeInviteLink) {
+      return;
+    }
+
+    try {
+      await this.bot.api.revokeChatInviteLink(
+        config.CHANNEL_ID,
+        user.activeInviteLink,
+      );
+      logger.info('Revoked existing invite link for user', {
+        telegramId: user.telegramId,
+      });
+    } catch (error) {
+      logger.warn('Failed to revoke invite link', {
+        telegramId: user.telegramId,
+        error,
+      });
+    }
+
+    user.activeInviteLink = undefined;
+
+    if (save) {
+      try {
+        await user.save();
+      } catch (error) {
+        logger.warn('Failed to save user after revoking invite link', {
+          telegramId: user.telegramId,
+          error,
+        });
+      }
     }
   }
 
@@ -1444,7 +1680,11 @@ ${expirationLabel} ${subscriptionEndDate}`;
           await this.bot.api.unbanChatMember(config.CHANNEL_ID, telegramId);
         }
 
+        await this.revokeUserInviteLink(subscription, false);
+
         const privateLink = await this.getPrivateLink();
+        subscription.activeInviteLink = privateLink.invite_link;
+        await subscription.save();
         const keyboard = new InlineKeyboard()
           .url('🔗 Kanalga kirish', privateLink.invite_link)
           .row()

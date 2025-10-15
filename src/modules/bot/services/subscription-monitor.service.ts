@@ -87,6 +87,25 @@ export class SubscriptionMonitorService {
 
   private async handleExpiredUser(user: IUserDocument): Promise<void> {
     try {
+      if (user.activeInviteLink) {
+        try {
+          await this.bot.api.revokeChatInviteLink(
+            config.CHANNEL_ID,
+            user.activeInviteLink,
+          );
+          logger.info('Revoked invite link for expired user', {
+            telegramId: user.telegramId,
+          });
+        } catch (error) {
+          logger.warn('Failed to revoke invite link for expired user', {
+            telegramId: user.telegramId,
+            error,
+          });
+        }
+
+        user.activeInviteLink = undefined;
+      }
+
       // Ban foydalanuvchini kanalga qayta kirishdan to'liq to'sish uchun
       await this.bot.api.banChatMember(config.CHANNEL_ID, user.telegramId);
 
