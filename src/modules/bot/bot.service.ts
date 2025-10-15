@@ -1388,13 +1388,26 @@ ${expirationLabel} ${subscriptionEndDate}`;
       .row()
       .text('🏠 Asosiy menyu', 'main_menu');
 
-    await ctx.editMessageText(
-      `${providerTitles[provider]} ni tanladingiz.\n\nQuyidagi tugma orqali to'lovni amalga oshirishingiz mumkin:`,
-      {
-        reply_markup: keyboard,
-        disable_web_page_preview: true,
-      },
-    );
+    try {
+      await ctx.editMessageText(
+        `${providerTitles[provider]} ni tanladingiz.\n\nQuyidagi tugma orqali to'lovni amalga oshirishingiz mumkin:`,
+        {
+          reply_markup: keyboard,
+          disable_web_page_preview: true,
+        },
+      );
+    } catch (error) {
+      logger.warn('Failed to edit onetime payment message, sending new one', {
+        error,
+      });
+      await ctx.reply(
+        `${providerTitles[provider]} ni tanladingiz.\n\nQuyidagi tugma orqali to'lovni amalga oshirishingiz mumkin:`,
+        {
+          reply_markup: keyboard,
+          disable_web_page_preview: true,
+        },
+      );
+    }
 
     await ctx.answerCallbackQuery();
   }
