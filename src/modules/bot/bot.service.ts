@@ -886,11 +886,10 @@ ${expirationLabel} ${subscriptionEndDate}`;
         config.CHANNEL_ID,
       );
       const expireAt = Math.floor(Date.now() / 1000) + 10 * 60; // 10 daqiqa amal qiladi
-      let link = await this.bot.api.createChatInviteLink(
+      const link = await this.bot.api.createChatInviteLink(
         config.CHANNEL_ID,
         {
           expire_date: expireAt,
-          member_limit: 1,
           creates_join_request: true,
         },
       );
@@ -900,29 +899,6 @@ ${expirationLabel} ${subscriptionEndDate}`;
       logger.info('Private channel invite link:', link.invite_link);
       return link;
     } catch (error) {
-      if (
-        typeof error === 'object' &&
-        error !== null &&
-        'description' in error &&
-        typeof (error as any).description === 'string' &&
-        (error as any).description.includes('member_limit')
-      ) {
-        logger.warn(
-          'member_limit parameter rejected. Retrying without member_limit.',
-        );
-        const fallbackLink = await this.bot.api.createChatInviteLink(
-          config.CHANNEL_ID,
-          {
-            expire_date: Math.floor(Date.now() / 1000) + 10 * 60,
-            creates_join_request: true,
-          },
-        );
-        logger.info(
-          'Private channel invite link (fallback):',
-          fallbackLink.invite_link,
-        );
-        return fallbackLink;
-      }
       logger.error('Error generating channel invite link:', error);
       throw error;
     }
