@@ -1375,9 +1375,28 @@ ${expirationLabel} ${subscriptionEndDate}`;
       return;
     }
 
-    await ctx.answerCallbackQuery({
-      url: redirectUrl,
-    });
+    const providerTitles: Record<'uzcard' | 'payme' | 'click', string> = {
+      uzcard: "📲 Uzcard orqali to'lash",
+      payme: "📲 Payme orqali to'lash",
+      click: "💳 Click orqali to'lash",
+    };
+
+    const keyboard = new InlineKeyboard()
+      .url(providerTitles[provider], redirectUrl)
+      .row()
+      .text("🔄 To'lov turlariga qaytish", 'payment_type_onetime')
+      .row()
+      .text('🏠 Asosiy menyu', 'main_menu');
+
+    await ctx.editMessageText(
+      `${providerTitles[provider]} ni tanladingiz.\n\nQuyidagi tugma orqali to'lovni amalga oshirishingiz mumkin:`,
+      {
+        reply_markup: keyboard,
+        disable_web_page_preview: true,
+      },
+    );
+
+    await ctx.answerCallbackQuery();
   }
 
   private async revokeUserInviteLink(
