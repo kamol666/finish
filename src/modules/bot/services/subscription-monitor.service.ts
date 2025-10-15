@@ -87,15 +87,8 @@ export class SubscriptionMonitorService {
 
   private async handleExpiredUser(user: IUserDocument): Promise<void> {
     try {
-      // First unban to clear any existing ban
-      await this.bot.api.unbanChatMember(config.CHANNEL_ID, user.telegramId);
-
-      // Then kick them out (ban until current time + 32 seconds)
-      // This effectively just removes them from the channel without banning
-      const kickUntil = Math.floor(Date.now() / 1000) + 15;
-      await this.bot.api.banChatMember(config.CHANNEL_ID, user.telegramId, {
-        until_date: kickUntil,
-      });
+      // Ban foydalanuvchini kanalga qayta kirishdan to'liq to'sish uchun
+      await this.bot.api.banChatMember(config.CHANNEL_ID, user.telegramId);
 
       // Update user status
       user.isActive = false;
