@@ -555,6 +555,28 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
   private async handleStart(ctx: BotContext): Promise<void> {
     ctx.session.hasAgreedToTerms = false;
+
+    const chatId = ctx.chat?.id;
+    const messageId = ctx.message?.message_id;
+
+    if (chatId && messageId) {
+      try {
+        await ctx.api.deleteMessage(chatId, messageId);
+      } catch (error) {
+        logger.warn('Start command message could not be deleted', {
+          chatId,
+          messageId,
+          error,
+        });
+      }
+
+      await this.clearChatHistory(ctx, messageId);
+    } else {
+      await this.clearChatHistory(ctx);
+    }
+
+    ctx.session.mainMenuMessageId = undefined;
+
     await this.createUserIfNotExist(ctx);
     await this.showMainMenu(ctx);
   }
@@ -1154,6 +1176,47 @@ ${expirationLabel} ${subscriptionEndDate}`;
         return "Siz Uzcard orqali bir martalik to'lov qilgansiz. Obuna muddati tugagach qayta urinib ko'ring.";
       default:
         return "Sizda faol obuna mavjud. Obuna muddati tugagach qayta to'lov qilishingiz mumkin.";
+    }
+  }
+
+  private async clearChatHistory(
+    ctx: BotContext,
+    fromMessageId?: number,
+    limit = 30,
+  ): Promise<void> {
+    const chatId = ctx.chat?.id;
+    const baseMessageId = fromMessageId ?? ctx.message?.message_id;
+
+    if (!chatId || !baseMessageId || baseMessageId <= 1) {
+      return;
+    }
+
+    for (let offset = 1; offset <= limit; offset++) {
+      const targetMessageId = baseMessageId - offset;
+      if (targetMessageId <= 0) {
+        break;
+      }
+
+      try {
+        await ctx.api.deleteMessage(chatId, targetMessageId);
+      } catch (error: any) {
+        const description: string | undefined = error?.description;
+
+        if (
+          description &&
+          (description.includes("message can't be deleted") ||
+            description.includes('message to delete not found') ||
+            description.includes('bot was blocked by the user'))
+        ) {
+          continue;
+        }
+
+        logger.warn('Failed to delete message while clearing chat history', {
+          chatId,
+          targetMessageId,
+          error,
+        });
+      }
     }
   }
 
