@@ -7,6 +7,7 @@ import logger from 'src/shared/utils/logger';
 import { PaymeSubsApiService } from '../payment-providers/payme-subs-api/payme-subs-api.service';
 import { ClickSubsApiService } from '../payment-providers/click-subs-api/click-subs-api.service';
 import { UzcardOnetimeApiService } from '../payment-providers/uzcard-onetime-api/uzcard-onetime-api.service';
+import { buildSubscriptionManagementLink } from 'src/shared/utils/payment-link.util';
 
 @Injectable()
 export class SubscriptionManagementService {
@@ -77,6 +78,10 @@ export class SubscriptionManagementService {
     };
   }
 
+  getCancellationLink(): string | undefined {
+    return this.resolveCancellationLink();
+  }
+
   private parseTelegramId(input: string): number {
     const digitsOnly = input?.replace(/\D/g, '');
     if (!digitsOnly) {
@@ -109,5 +114,10 @@ export class SubscriptionManagementService {
         logger.error(`Unsupported card type for cancellation: ${card.cardType}`);
         return false;
     }
+  }
+
+  private resolveCancellationLink(): string | undefined {
+    const link = buildSubscriptionManagementLink('subscription/cancel');
+    return link;
   }
 }

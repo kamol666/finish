@@ -40,7 +40,8 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
   private subscriptionMonitorService: SubscriptionMonitorService;
   private subscriptionChecker: SubscriptionChecker;
   private readonly ADMIN_IDS = [1487957834, 7554617589, 85939027, 2022496528];
-  private readonly subscriptionCancelLink: string;
+  private readonly subscriptionCancelLink?: string;
+  private readonly subscriptionTermsLink: string;
 
 
   constructor() {
@@ -51,23 +52,35 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       this.subscriptionMonitorService,
     );
     this.subscriptionCancelLink = this.resolveSubscriptionCancelLink();
+    this.subscriptionTermsLink = this.resolveSubscriptionTermsLink();
     this.setupMiddleware();
     this.setupHandlers();
   }
 
-  private resolveSubscriptionCancelLink(): string {
+  private buildCancellationNotice(): string {
+    if (this.subscriptionCancelLink) {
+      return `Obunani bekor qilish uchun <a href="${this.subscriptionCancelLink}">bu havola</a> orqali ariza yuboring.`;
+    }
+
+    return 'Obunani bekor qilish uchun botdagi "Obuna holati" bo‘limi orqali qo‘llab-quvvatlashga murojaat qiling.';
+  }
+
+  private resolveSubscriptionCancelLink(): string | undefined {
     const derived = buildSubscriptionManagementLink('subscription/cancel');
     if (derived) {
       return derived;
     }
 
-    const hostEnv =
-      process.env.PUBLIC_APP_HOST ||
-      process.env.BASE_PAYMENT_LINK_URL ||
-      process.env.HOST ||
-      'localhost';
-    const normalizedHost = hostEnv === '0.0.0.0' ? 'localhost' : hostEnv;
-    return `http://${normalizedHost}:${config.APP_PORT}/api/subscription/cancel`;
+    return undefined;
+  }
+
+  private resolveSubscriptionTermsLink(): string {
+    const derived = buildSubscriptionManagementLink('subscription/terms');
+    if (derived) {
+      return derived;
+    }
+
+    return 'https://telegra.ph/Yulduzlar-Bashorati-Premium--OMMAVIY-OFERTA-06-26';
   }
 
   async onModuleInit(): Promise<void> {
@@ -771,10 +784,7 @@ ${expirationLabel} ${subscriptionEndDate}`;
       ctx.session.hasAgreedToTerms = false;
 
       const keyboard = new InlineKeyboard()
-        .url(
-          '📄 Foydalanish shartlari',
-          'https://telegra.ph/Yulduzlar-Bashorati-Premium--OMMAVIY-OFERTA-06-26',
-        )
+        .url('📄 Foydalanish shartlari', this.subscriptionTermsLink)
         .row()
         .text('✅ Qabul qilaman', 'agree_terms')
         .row()
@@ -783,7 +793,7 @@ ${expirationLabel} ${subscriptionEndDate}`;
       await ctx.editMessageText(
         '📜 <b>Foydalanish shartlari va shartlar:</b>\n\n' +
           "Iltimos, obuna bo'lishdan oldin foydalanish shartlari bilan tanishib chiqing.\n\n" +
-          `Obunani bekor qilish uchun <a href="${this.subscriptionCancelLink}">bu havola</a> orqali ariza yuboring.\n\n` +
+          `${this.buildCancellationNotice()}\n\n` +
           'Tugmani bosib foydalanish shartlarini o\'qishingiz mumkin. Shartlarni qabul qilganingizdan so\'ng "Qabul qilaman" tugmasini bosing.',
         {
           reply_markup: keyboard,
@@ -973,10 +983,7 @@ ${expirationLabel} ${subscriptionEndDate}`;
       ctx.session.hasAgreedToTerms = false;
 
       const keyboard = new InlineKeyboard()
-        .url(
-          '📄 Foydalanish shartlari',
-          'https://telegra.ph/Yulduzlar-Bashorati-Premium--OMMAVIY-OFERTA-06-26',
-        )
+        .url('📄 Foydalanish shartlari', this.subscriptionTermsLink)
         .row()
         .text('✅ Qabul qilaman', 'agree_terms')
         .row()
@@ -985,7 +992,7 @@ ${expirationLabel} ${subscriptionEndDate}`;
       await ctx.editMessageText(
         '📜 <b>Foydalanish shartlari va shartlar:</b>\n\n' +
           'Iltimos, obunani yangilashdan oldin foydalanish shartlari bilan tanishib chiqing.\n\n' +
-          `Obunani bekor qilish uchun <a href="${this.subscriptionCancelLink}">bu havola</a> orqali ariza yuboring.\n\n` +
+          `${this.buildCancellationNotice()}\n\n` +
           'Tugmani bosib foydalanish shartlarini o\'qishingiz mumkin. Shartlarni qabul qilganingizdan so\'ng "Qabul qilaman" tugmasini bosing.',
         {
           reply_markup: keyboard,

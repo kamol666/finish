@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Foydalanish shartlari</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #f4f4f6;
+      color: #1f2937;
+      display: flex;
+      justify-content: center;
+    }
+
+    .layout {
+      width: 100%;
+      max-width: 880px;
+      background: #ffffff;
+      padding: 40px 48px;
+      border-radius: 20px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+      line-height: 1.65;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+      font-size: 2rem;
+    }
+
+    h2 {
+      margin-top: 2rem;
+      font-size: 1.3rem;
+      color: #111827;
+    }
+
+    p, li {
+      margin-bottom: 0.85rem;
+    }
+
+    ul {
+      padding-left: 1.2rem;
+    }
+
+    a {
+      color: #4f46e5;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .alert {
+      border-left: 4px solid #6366f1;
+      background: rgba(99, 102, 241, 0.08);
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin: 24px 0;
+    }
+
+    .footer {
+      margin-top: 3rem;
+      text-align: right;
+      font-weight: 600;
+    }
+
+    @media (max-width: 680px) {
+      body {
+        padding: 16px;
+      }
+
+      .layout {
+        padding: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="layout">
+    <h1>Yulduzlar Bashorati Premium — Foydalanish shartlari</h1>
+    <p>
+      Ushbu hujjat “Lux Content” MCHJ (keyingi o‘rinlarda — «Xizmat ko‘rsatuvchi») tomonidan taqdim etiladigan
+      “Yulduzlar Bashorati Premium” obuna xizmati uchun ommaviy oferta hisoblanadi. Obunaga yozilish orqali
+      Siz quyidagi shartlarni to‘liq qabul qilgan bo‘lasiz.
+    </p>
+
+    <h2>1. Umumiy qoidalar</h2>
+    <ul>
+      <li>Xizmat ko‘rsatuvchi foydalanuvchiga telegram kanali orqali astrologik kontent taqdim etadi.</li>
+      <li>Obuna pullik bo‘lib, to‘lovning qabul qilinishi xizmatdan foydalanish boshlanishi sanaladi.</li>
+      <li>Ushbu shartlar ommaviy oferta bo‘lib, foydalanuvchi tomonidan alohida imzolanmaydi.</li>
+    </ul>
+
+    <h2>2. To‘lov va obuna muddati</h2>
+    <ul>
+      <li>Obuna uchun to‘lovlar Payme, Click yoki Uzcard orqali amalga oshiriladi.</li>
+      <li>Obuna muddati tarif rejasiga muvofiq belgilanadi va avtomatik uzaytirilib borilishi mumkin.</li>
+      <li>To‘lov amalga oshirilgach, foydalanuvchi kanalga qo‘shiladi va obuna muddati yakuniga qadar kontentni ko‘rish huquqiga ega bo‘ladi.</li>
+    </ul>
+
+    <h2>3. Foydalanuvchining majburiyatlari</h2>
+    <ul>
+      <li>Obunaga doir ma’lumotlarni uchinchi shaxslarga bermaslik.</li>
+      <li>To‘lovni o‘z vaqtida amalga oshirish.</li>
+      <li>Shaxsiy ma’lumotlarda o‘zgarish bo‘lsa, Xizmat ko‘rsatuvchini xabardor qilish.</li>
+    </ul>
+
+    <h2>4. Obunani bekor qilish</h2>
+    <div class="alert">
+      <p>
+        Avtomatik to‘lovni to‘xtatish va kartangizni tizimdan o‘chirish uchun quyidagi maxsus forma orqali ariza yuboring.
+      </p>
+      <% if (cancellationLink) { %>
+        <p>
+          <a href="<%= cancellationLink %>" target="_blank" rel="noopener">Obunani bekor qilish formasiga o‘tish</a>
+        </p>
+      <% } else { %>
+        <p>
+          Obunani bekor qilish uchun Telegram botdagi “Obunani bekor qilish” bo‘limidan foydalaning yoki texnik
+          qo‘llab-quvvatlash xizmatiga murojaat qiling.
+        </p>
+      <% } %>
+      <p>
+        Ariza qabul qilingach, kartangiz tizimdan o‘chiriladi va avtomatik to‘lovlar bekor qilinadi. Faol obuna muddati tugaguncha kanalga kirish saqlanib qoladi.
+      </p>
+    </div>
+
+    <h2>5. Mas’uliyatni cheklash</h2>
+    <ul>
+      <li>Astrologik prognozlar tavsiya xarakteriga ega va foydalanuvchining qarorlari uchun Xizmat ko‘rsatuvchi javobgar emas.</li>
+      <li>Texnik nosozliklar yuzaga kelganda, ularni bartaraf etish uchun barcha zarur choralar ko‘riladi.</li>
+    </ul>
+
+    <h2>6. Yakuniy qoidalar</h2>
+    <ul>
+      <li>Shartlar Xizmat ko‘rsatuvchi tomonidan yangilanishi mumkin. Yangilangan talqin e’lon qilingan kundan boshlab kuchga kiradi.</li>
+      <li>Ushbu shartlar O‘zbekiston Respublikasining amaldagi qonunchiligiga bo‘ysunadi.</li>
+    </ul>
+
+    <p class="footer">Mas’uliyati cheklangan jamiyat “Lux Content”</p>
+  </main>
+</body>
+</html>

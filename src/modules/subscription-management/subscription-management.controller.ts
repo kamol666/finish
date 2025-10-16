@@ -19,6 +19,15 @@ export class SubscriptionManagementController {
     };
   }
 
+  @Get('terms')
+  @Header('Content-Type', 'text/html')
+  @Render('subscription/terms')
+  showTermsPage() {
+    return {
+      cancellationLink: this.subscriptionManagementService.getCancellationLink(),
+    };
+  }
+
   @Post('cancel')
   @Header('Content-Type', 'text/html')
   @Render('subscription/cancel')
