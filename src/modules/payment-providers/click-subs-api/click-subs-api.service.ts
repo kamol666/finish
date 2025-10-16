@@ -357,24 +357,19 @@ export class ClickSubsApiService {
             return false;
         }
 
-        const headers = this.getHeaders();
-        const payload = {
-            service_id: this.serviceId,
-            card_token: cardToken,
-        };
-
         try {
-            const response = await axios.post(
-                `${this.baseUrl}/card_token/delete`,
-                payload,
-                { headers }
+            const response = await axios.delete(
+                `${this.baseUrl}/card_token/${this.serviceId}/${encodeURIComponent(cardToken)}`,
+                { headers: this.getHeaders() }
             );
 
             if (response.data?.error_code === 0) {
                 return true;
             }
 
-            logger.error(`Failed to delete Click card. Response: ${JSON.stringify(response.data)}`);
+            logger.error(
+                `Failed to delete Click card. Response: ${JSON.stringify(response.data)}`
+            );
             return false;
         } catch (error) {
             logger.error('Error deleting Click card:', error);

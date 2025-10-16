@@ -39,10 +39,10 @@ export class SubscriptionManagementService {
           `Provider removal failed for user ${user._id} cardType=${card.cardType}`,
         );
       }
-    }
 
-    if (cards.length > 0) {
-      await UserCardsModel.deleteMany({ userId: user._id });
+      card.isDeleted = true;
+      card.deletedAt = new Date();
+      await card.save();
     }
 
     await UserSubscription.updateMany(
