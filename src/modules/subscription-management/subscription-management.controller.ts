@@ -64,8 +64,6 @@ export class SubscriptionManagementController {
         message,
         form: {
           telegramId: body.telegramId,
-          cardType: body.cardType,
-          cardLastDigits: body.cardLastDigits,
         },
       };
     }

@@ -19,11 +19,6 @@ export class SubscriptionManagementService {
 
   async cancelSubscription(dto: CancelSubscriptionDto) {
     const telegramId = this.parseTelegramId(dto.telegramId);
-    const lastDigits = this.normalizeLastDigits(dto.cardLastDigits);
-
-    if (!lastDigits) {
-      throw new BadRequestException('Kartaning oxirgi 4 raqamini kiriting.');
-    }
 
     const user = await UserModel.findOne({ telegramId });
     if (!user) {
@@ -32,27 +27,23 @@ export class SubscriptionManagementService {
       );
     }
 
-    const card = await UserCardsModel.findOne({
+    const cards = await UserCardsModel.find({
       userId: user._id,
-      cardType: dto.cardType,
       isDeleted: { $ne: true },
-      incompleteCardNumber: { $regex: `${lastDigits}$` },
-    });
+    }).exec();
 
-    if (!card) {
-      throw new NotFoundException(
-        'Karta topilmadi. Maʼlumotlarni tekshirib qaytadan urinib ko‘ring.',
-      );
+    for (const card of cards) {
+      const providerRemoved = await this.removeProviderCard(card);
+      if (!providerRemoved) {
+        logger.warn(
+          `Provider removal failed for user ${user._id} cardType=${card.cardType}`,
+        );
+      }
     }
 
-    const providerRemoved = await this.removeProviderCard(card);
-    if (!providerRemoved) {
-      throw new BadRequestException(
-        'Karta provayder tomonidan bekor qilinmadi. Iltimos keyinroq urinib ko‘ring.',
-      );
+    if (cards.length > 0) {
+      await UserCardsModel.deleteMany({ userId: user._id });
     }
-
-    await UserCardsModel.deleteOne({ _id: card._id });
 
     await UserSubscription.updateMany(
       { user: user._id, isActive: true },
@@ -68,9 +59,7 @@ export class SubscriptionManagementService {
     user.subscriptionEnd = new Date();
     await user.save();
 
-    logger.info(
-      `Subscription cancelled for telegramId=${telegramId}, cardType=${dto.cardType}`,
-    );
+    logger.info(`Subscription cancelled for telegramId=${telegramId}`);
 
     return {
       success: true,
@@ -94,10 +83,6 @@ export class SubscriptionManagementService {
     }
 
     return parsed;
-  }
-
-  private normalizeLastDigits(input: string): string {
-    return input?.replace(/\D/g, '').slice(-4) ?? '';
   }
 
   private async removeProviderCard(card: IUserCardsDocument): Promise<boolean> {

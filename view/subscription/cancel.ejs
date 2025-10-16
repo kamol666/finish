@@ -149,27 +149,6 @@
       />
       <p class="helper">Telegram ID raqamini @userinfobot orqali olish mumkin.</p>
 
-      <label for="cardType">Toʻlov provayderi</label>
-      <select id="cardType" name="cardType" required>
-        <option value="">Provayderni tanlang</option>
-        <option value="payme" <%= form.cardType === 'payme' ? 'selected' : '' %>>Payme</option>
-        <option value="click" <%= form.cardType === 'click' ? 'selected' : '' %>>Click</option>
-        <option value="uzcard" <%= form.cardType === 'uzcard' ? 'selected' : '' %>>Uzcard</option>
-      </select>
-
-      <label for="cardLastDigits">Kartaning oxirgi 4 raqami</label>
-      <input
-        id="cardLastDigits"
-        name="cardLastDigits"
-        type="text"
-        maxlength="4"
-        inputmode="numeric"
-        pattern="[0-9]{4}"
-        placeholder="1234"
-        required
-        value="<%= form.cardLastDigits ? form.cardLastDigits : '' %>"
-      />
-
       <button type="submit">Obunani bekor qilish</button>
     </form>
 
