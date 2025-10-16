@@ -1,0 +1,113 @@
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { CancelSubscriptionDto } from './dto/cancel-subscription.dto';
+import { CardType, IUserCardsDocument, UserCardsModel } from 'src/shared/database/models/user-cards.model';
+import { UserModel } from 'src/shared/database/models/user.model';
+import { UserSubscription } from 'src/shared/database/models/user-subscription.model';
+import logger from 'src/shared/utils/logger';
+import { PaymeSubsApiService } from '../payment-providers/payme-subs-api/payme-subs-api.service';
+import { ClickSubsApiService } from '../payment-providers/click-subs-api/click-subs-api.service';
+import { UzcardOnetimeApiService } from '../payment-providers/uzcard-onetime-api/uzcard-onetime-api.service';
+
+@Injectable()
+export class SubscriptionManagementService {
+  constructor(
+    private readonly paymeSubsApiService: PaymeSubsApiService,
+    private readonly clickSubsApiService: ClickSubsApiService,
+    private readonly uzcardOnetimeApiService: UzcardOnetimeApiService,
+  ) {}
+
+  async cancelSubscription(dto: CancelSubscriptionDto) {
+    const telegramId = this.parseTelegramId(dto.telegramId);
+    const lastDigits = this.normalizeLastDigits(dto.cardLastDigits);
+
+    if (!lastDigits) {
+      throw new BadRequestException('Kartaning oxirgi 4 raqamini kiriting.');
+    }
+
+    const user = await UserModel.findOne({ telegramId });
+    if (!user) {
+      throw new NotFoundException(
+        'Foydalanuvchi topilmadi. Telegram ID raqamini tekshiring.',
+      );
+    }
+
+    const card = await UserCardsModel.findOne({
+      userId: user._id,
+      cardType: dto.cardType,
+      isDeleted: { $ne: true },
+      incompleteCardNumber: { $regex: `${lastDigits}$` },
+    });
+
+    if (!card) {
+      throw new NotFoundException(
+        'Karta topilmadi. Maʼlumotlarni tekshirib qaytadan urinib ko‘ring.',
+      );
+    }
+
+    const providerRemoved = await this.removeProviderCard(card);
+    if (!providerRemoved) {
+      throw new BadRequestException(
+        'Karta provayder tomonidan bekor qilinmadi. Iltimos keyinroq urinib ko‘ring.',
+      );
+    }
+
+    await UserCardsModel.deleteOne({ _id: card._id });
+
+    await UserSubscription.updateMany(
+      { user: user._id, isActive: true },
+      {
+        isActive: false,
+        autoRenew: false,
+        status: 'cancelled',
+        endDate: new Date(),
+      },
+    );
+
+    user.isActive = false;
+    user.subscriptionEnd = new Date();
+    await user.save();
+
+    logger.info(
+      `Subscription cancelled for telegramId=${telegramId}, cardType=${dto.cardType}`,
+    );
+
+    return {
+      success: true,
+      message: 'Obuna muvaffaqiyatli bekor qilindi.',
+    };
+  }
+
+  private parseTelegramId(input: string): number {
+    const digitsOnly = input?.replace(/\D/g, '');
+    if (!digitsOnly) {
+      throw new BadRequestException('Telegram ID raqamini to‘liq kiriting.');
+    }
+
+    const parsed = Number(digitsOnly);
+    if (!Number.isFinite(parsed)) {
+      throw new BadRequestException('Telegram ID noto‘g‘ri formatda.');
+    }
+
+    return parsed;
+  }
+
+  private normalizeLastDigits(input: string): string {
+    return input?.replace(/\D/g, '').slice(-4) ?? '';
+  }
+
+  private async removeProviderCard(card: IUserCardsDocument): Promise<boolean> {
+    switch (card.cardType) {
+      case CardType.PAYME:
+        return this.paymeSubsApiService.removeCard(card.cardToken);
+      case CardType.CLICK:
+        return this.clickSubsApiService.deleteCard(card.cardToken);
+      case CardType.UZCARD:
+        return this.uzcardOnetimeApiService.deleteCard(
+          card.userId.toString(),
+        );
+      default:
+        logger.error(`Unsupported card type for cancellation: ${card.cardType}`);
+        return false;
+    }
+  }
+}

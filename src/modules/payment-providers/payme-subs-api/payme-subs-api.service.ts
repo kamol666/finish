@@ -5,7 +5,7 @@ import { BotService } from 'src/modules/bot/bot.service';
 import logger from 'src/shared/utils/logger';
 import axios from 'axios';
 import mongoose from 'mongoose';
-import { CardCreateRequest, CardGetVerifyCodeRequest, CardVerifyRequest, ReceiptCreateRequest, ReceiptPayRequest } from 'src/shared/utils/types/interfaces/payme-types';
+import { CardCreateRequest, CardGetVerifyCodeRequest, CardRemoveRequest, CardVerifyRequest, ReceiptCreateRequest, ReceiptPayRequest } from 'src/shared/utils/types/interfaces/payme-types';
 import { UserModel } from 'src/shared/database/models/user.model';
 import { CardType, UserCardsModel } from 'src/shared/database/models/user-cards.model';
 import { Plan } from 'src/shared/database/models/plans.model';
@@ -504,7 +504,7 @@ export class PaymeSubsApiService {
             };
         }
     }
-    async createReceipt(userId: string, planId: string) {
+  async createReceipt(userId: string, planId: string) {
 
         let receiptId = null;
         const headers = {
@@ -561,11 +561,52 @@ export class PaymeSubsApiService {
                     message: 'Error connecting to payment service'
                 }
             };
-        }
     }
+  }
+
+  async removeCard(cardToken: string): Promise<boolean> {
+    const headers = {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      'X-Auth': this.PAYME_X_AUTH_CARDS,
+      'Cache-Control': 'no-cache',
+    };
+
+    const payload: CardRemoveRequest = {
+      id: Date.now(),
+      method: 'cards.remove',
+      params: {
+        token: cardToken,
+      },
+    };
+
+    try {
+      const response = await axios.post(this.baseUrl, payload, { headers });
+
+      if (response.data?.error) {
+        logger.error(
+          `Failed to remove Payme card. Code: ${response.data.error.code}, Message: ${response.data.error.message}`,
+        );
+        return false;
+      }
+
+      const result = response.data?.result;
+      if (result?.success === true) {
+        return true;
+      }
+
+      logger.warn(
+        `Payme card removal returned unexpected payload: ${JSON.stringify(response.data)}`,
+      );
+      return false;
+    } catch (error) {
+      logger.error('Error removing Payme card:', error);
+      return false;
+    }
+  }
 
 
-    private getErrorMessage(errorCode: number): string {
+  private getErrorMessage(errorCode: number): string {
         const errorMessages = {
             '-31300': `Karta raqami noto'g'ri. Iltimos tekshirib qaytadan kiriting.`,
             '-31301': `Amal qilish muddati noto'g'ri. Iltimos tekshirib qaytadan kiriting.`,

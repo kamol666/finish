@@ -10,6 +10,7 @@ import { UzcardOnetimeApiModule } from './modules/payment-providers/uzcard-oneti
 import { ClickSubsApiModule } from './modules/payment-providers/click-subs-api/click-subs-api.module';
 import { PaymeSubsApiModule } from './modules/payment-providers/payme-subs-api/payme-subs-api.module';
 import { PaymentLinkModule } from './modules/payment-link/payment-link.module';
+import { SubscriptionManagementModule } from './modules/subscription-management/subscription-management.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { PaymentLinkModule } from './modules/payment-link/payment-link.module';
     ClickSubsApiModule,
     PaymeSubsApiModule,
     PaymentLinkModule,
+    SubscriptionManagementModule,
   ],
   controllers: [AppController],
   providers: [AppService],

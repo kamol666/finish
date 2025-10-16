@@ -351,4 +351,35 @@ export class ClickSubsApiService {
         };
     }
 
+    async deleteCard(cardToken: string): Promise<boolean> {
+        if (!this.serviceId) {
+            logger.error('Service ID is not configured for Click card deletion');
+            return false;
+        }
+
+        const headers = this.getHeaders();
+        const payload = {
+            service_id: this.serviceId,
+            card_token: cardToken,
+        };
+
+        try {
+            const response = await axios.post(
+                `${this.baseUrl}/card_token/delete`,
+                payload,
+                { headers }
+            );
+
+            if (response.data?.error_code === 0) {
+                return true;
+            }
+
+            logger.error(`Failed to delete Click card. Response: ${JSON.stringify(response.data)}`);
+            return false;
+        } catch (error) {
+            logger.error('Error deleting Click card:', error);
+            return false;
+        }
+    }
+
 }

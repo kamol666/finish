@@ -41,6 +41,14 @@ export interface CardVerifyRequest {
     };
 }
 
+export interface CardRemoveRequest {
+    id: number;
+    method: 'cards.remove';
+    params: {
+        token: string;
+    };
+}
+
 
 export interface ReceiptPayRequest {
     id: number;

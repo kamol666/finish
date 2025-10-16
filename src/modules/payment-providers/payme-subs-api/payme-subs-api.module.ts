@@ -5,5 +5,6 @@ import { PaymeSubsApiController } from './payme-subs-api.controller';
 @Module({
   controllers: [PaymeSubsApiController],
   providers: [PaymeSubsApiService],
+  exports: [PaymeSubsApiService],
 })
 export class PaymeSubsApiModule {}

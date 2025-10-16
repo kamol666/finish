@@ -12,6 +12,7 @@ import {
   ClickRedirectParams,
   getClickRedirectLink,
 } from '../../shared/generators/click-redirect-link.generator';
+import { buildSubscriptionManagementLink } from '../../shared/utils/payment-link.util';
 import mongoose from "mongoose";
 import { CardType, UserCardsModel } from "../../shared/database/models/user-cards.model";
 import { FlowStepType, SubscriptionFlowTracker } from 'src/shared/database/models/subscription.follow.tracker';
@@ -39,6 +40,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
   private subscriptionMonitorService: SubscriptionMonitorService;
   private subscriptionChecker: SubscriptionChecker;
   private readonly ADMIN_IDS = [1487957834, 7554617589, 85939027, 2022496528];
+  private readonly subscriptionCancelLink: string;
 
 
   constructor() {
@@ -48,8 +50,24 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
     this.subscriptionChecker = new SubscriptionChecker(
       this.subscriptionMonitorService,
     );
+    this.subscriptionCancelLink = this.resolveSubscriptionCancelLink();
     this.setupMiddleware();
     this.setupHandlers();
+  }
+
+  private resolveSubscriptionCancelLink(): string {
+    const derived = buildSubscriptionManagementLink('subscription/cancel');
+    if (derived) {
+      return derived;
+    }
+
+    const hostEnv =
+      process.env.PUBLIC_APP_HOST ||
+      process.env.BASE_PAYMENT_LINK_URL ||
+      process.env.HOST ||
+      'localhost';
+    const normalizedHost = hostEnv === '0.0.0.0' ? 'localhost' : hostEnv;
+    return `http://${normalizedHost}:${config.APP_PORT}/api/subscription/cancel`;
   }
 
   async onModuleInit(): Promise<void> {
@@ -764,8 +782,9 @@ ${expirationLabel} ${subscriptionEndDate}`;
 
       await ctx.editMessageText(
         '📜 <b>Foydalanish shartlari va shartlar:</b>\n\n' +
-        "Iltimos, obuna bo'lishdan oldin foydalanish shartlari bilan tanishib chiqing.\n\n" +
-        'Tugmani bosib foydalanish shartlarini o\'qishingiz mumkin. Shartlarni qabul qilganingizdan so\'ng "Qabul qilaman" tugmasini bosing.',
+          "Iltimos, obuna bo'lishdan oldin foydalanish shartlari bilan tanishib chiqing.\n\n" +
+          `Obunani bekor qilish uchun <a href="${this.subscriptionCancelLink}">bu havola</a> orqali ariza yuboring.\n\n` +
+          'Tugmani bosib foydalanish shartlarini o\'qishingiz mumkin. Shartlarni qabul qilganingizdan so\'ng "Qabul qilaman" tugmasini bosing.',
         {
           reply_markup: keyboard,
           parse_mode: 'HTML',
@@ -965,8 +984,9 @@ ${expirationLabel} ${subscriptionEndDate}`;
 
       await ctx.editMessageText(
         '📜 <b>Foydalanish shartlari va shartlar:</b>\n\n' +
-        'Iltimos, obunani yangilashdan oldin foydalanish shartlari bilan tanishib chiqing.\n\n' +
-        'Tugmani bosib foydalanish shartlarini o\'qishingiz mumkin. Shartlarni qabul qilganingizdan so\'ng "Qabul qilaman" tugmasini bosing.',
+          'Iltimos, obunani yangilashdan oldin foydalanish shartlari bilan tanishib chiqing.\n\n' +
+          `Obunani bekor qilish uchun <a href="${this.subscriptionCancelLink}">bu havola</a> orqali ariza yuboring.\n\n` +
+          'Tugmani bosib foydalanish shartlarini o\'qishingiz mumkin. Shartlarni qabul qilganingizdan so\'ng "Qabul qilaman" tugmasini bosing.',
         {
           reply_markup: keyboard,
           parse_mode: 'HTML',

@@ -74,3 +74,43 @@ export function buildMaskedPaymentLink(path: string): string | undefined {
   const trimmedPath = path.replace(/^\/+/, '');
   return `${base}/${trimmedPath}`;
 }
+
+function deriveApiBaseFromPaymentLink(paymentLinkBase: string): string | undefined {
+  try {
+    const url = new URL(paymentLinkBase);
+    const segments = url.pathname.split('/').filter(Boolean);
+
+    if (segments.length && segments[segments.length - 1] === ROUTE_PREFIX) {
+      segments.pop();
+      url.pathname = segments.length ? `/${segments.join('/')}` : '/';
+    }
+
+    return sanitizeBase(url.toString());
+  } catch {
+    return undefined;
+  }
+}
+
+export function resolveSubscriptionManagementBase(): string | undefined {
+  const explicitBase = config.SUBSCRIPTION_MANAGEMENT_BASE_URL?.trim();
+  if (explicitBase) {
+    return sanitizeBase(explicitBase);
+  }
+
+  const paymentBase = resolvePaymentLinkBase();
+  if (!paymentBase) {
+    return undefined;
+  }
+
+  return deriveApiBaseFromPaymentLink(paymentBase);
+}
+
+export function buildSubscriptionManagementLink(path: string): string | undefined {
+  const base = resolveSubscriptionManagementBase();
+  if (!base) {
+    return undefined;
+  }
+
+  const trimmedPath = path.replace(/^\/+/, '');
+  return `${base}/${trimmedPath}`;
+}

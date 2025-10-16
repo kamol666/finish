@@ -5,5 +5,6 @@ import { ClickSubsApiController } from './click-subs-api.controller';
 @Module({
   controllers: [ClickSubsApiController],
   providers: [ClickSubsApiService],
+  exports: [ClickSubsApiService],
 })
 export class ClickSubsApiModule {}
