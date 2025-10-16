@@ -38,14 +38,15 @@ export class SubscriptionManagementController {
   @Header('Content-Type', 'text/html')
   @Render('subscription/cancel')
   async handleCancellation(@Body() body: CancelSubscriptionDto, @Query('token') token?: string) {
+    let parsedTelegramId: string | undefined;
     try {
-      const telegramId = this.parseToken(token);
-      if (!telegramId) {
+      parsedTelegramId = this.parseToken(token);
+      if (!parsedTelegramId) {
         throw new BadRequestException('Bekor qilish havolasi noto‘g‘ri.');
       }
 
       const result =
-        await this.subscriptionManagementService.cancelSubscription({ telegramId });
+        await this.subscriptionManagementService.cancelSubscription({ telegramId: parsedTelegramId });
       return {
         status: 'success',
         message: result.message,
@@ -75,7 +76,7 @@ export class SubscriptionManagementController {
         status: 'error',
         message,
         form: {
-          telegramId: telegramId ?? body.telegramId,
+          telegramId: parsedTelegramId ?? body.telegramId,
         },
         token,
       };

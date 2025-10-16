@@ -1,4 +1,5 @@
 import { config } from '../config';
+import { createSignedToken } from './signed-token.util';
 
 const ROUTE_PREFIX = 'payment-link';
 const DEFAULT_GLOBAL_PREFIX = 'api';
@@ -125,6 +126,10 @@ export function buildSubscriptionCancellationLink(telegramId: number | string): 
     return undefined;
   }
 
-  const trimmedId = encodeURIComponent(String(telegramId));
-  return `${base}/subscription/cancel?token=${trimmedId}`;
+  const token = createSignedToken(
+    { telegramId: String(telegramId) },
+    config.PAYMENT_LINK_SECRET,
+  );
+
+  return `${base}/subscription/cancel?token=${encodeURIComponent(token)}`;
 }
