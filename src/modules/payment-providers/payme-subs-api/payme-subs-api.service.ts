@@ -187,10 +187,10 @@ export class PaymeSubsApiService {
             logger.info(`User found: ${user}`);
 
             const existingUserCard = await UserCardsModel.findOne({
-                incompleteCardNumber: response.data.result.card.number
+                incompleteCardNumber: response.data.result.card.number,
             });
 
-            if (existingUserCard) {
+            if (existingUserCard && !existingUserCard.isDeleted) {
                 return {
                     success: false,
                     error: {
@@ -222,7 +222,23 @@ export class PaymeSubsApiService {
                     existingCard.verificationCode = parseInt(requestBody.code);
                     existingCard.verified = true;
                     existingCard.verifiedDate = new Date(time);
+                    existingCard.isDeleted = false;
+                    existingCard.deletedAt = undefined;
                     userCard = await existingCard.save();
+                } else if (existingUserCard && existingUserCard.isDeleted) {
+                    logger.info(`Reviving deleted PAYME card for user: ${user.telegramId}`);
+                    existingUserCard.telegramId = user.telegramId;
+                    existingUserCard.username = user.username ? user.username : undefined;
+                    existingUserCard.cardToken = response.data.result.card.token;
+                    existingUserCard.expireDate = response.data.result.card.expire;
+                    existingUserCard.userId = requestBody.userId;
+                    existingUserCard.planId = requestBody.planId as any;
+                    existingUserCard.verificationCode = requestBody.code;
+                    existingUserCard.verified = true;
+                    existingUserCard.verifiedDate = new Date(time);
+                    existingUserCard.isDeleted = false;
+                    existingUserCard.deletedAt = undefined;
+                    userCard = await existingUserCard.save();
                 } else {
                     // Create new card
                     logger.info(`Creating new PAYME card for user: ${user.telegramId}`);
@@ -401,7 +417,11 @@ export class PaymeSubsApiService {
             return;
         }
 
-        const userCard = await UserCardsModel.findOne({ userId: userId });
+        const userCard = await UserCardsModel.findOne({
+            userId: userId,
+            cardType: CardType.PAYME,
+            isDeleted: { $ne: true },
+        });
         if (!userCard) {
             logger.error('User card not found');
             return;

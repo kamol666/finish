@@ -149,20 +149,16 @@ export class ClickSubsApiService {
 
             let userCard;
             if (existingCard) {
-                // Update existing card
-                userCard = await UserCardsModel.findByIdAndUpdate(
-                    existingCard._id,
-                    {
-                        incompleteCardNumber: response.data.card_number,
-                        cardToken: requestBodyWithServiceId.card_token,
-                        expireDate: requestBody.expireDate,
-                        planId: requestBody.planId,
-                        verificationCode: requestBody.sms_code,
-                        verified: true,
-                        verifiedDate: new Date(time),
-                    },
-                    { new: true }
-                );
+                existingCard.incompleteCardNumber = response.data.card_number;
+                existingCard.cardToken = requestBodyWithServiceId.card_token;
+                existingCard.expireDate = requestBody.expireDate;
+                existingCard.planId = requestBody.planId as any;
+                existingCard.verificationCode = requestBody.sms_code;
+                existingCard.verified = true;
+                existingCard.verifiedDate = new Date(time);
+                existingCard.isDeleted = false;
+                existingCard.deletedAt = undefined;
+                userCard = await existingCard.save();
             } else {
                 // Create new card
                 userCard = await UserCardsModel.create({
@@ -204,7 +200,7 @@ export class ClickSubsApiService {
                     await this.getBotService().handleCardAddedWithoutBonus(
                         requestBody.userId,
                         user.telegramId,
-                        CardType.PAYME,
+                        CardType.CLICK,
                         plan,
                         user.username,
                         requestBody.selectedService
@@ -241,7 +237,9 @@ export class ClickSubsApiService {
         const userCard = await UserCardsModel.findOne({
             userId: requestBody.userId,
             telegramId: requestBody.telegramId,
-            verified: true
+            verified: true,
+            cardType: CardType.CLICK,
+            isDeleted: { $ne: true },
         });
 
         if (!userCard || !this.serviceId) {
