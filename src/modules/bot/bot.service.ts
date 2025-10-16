@@ -766,21 +766,6 @@ ${expirationLabel} ${subscriptionEndDate}`;
         return;
       }
 
-      const existingSubscription =
-        await this.subscriptionService.getSubscription(user._id as string);
-      if (existingSubscription?.isActive) {
-        const keyboard = new InlineKeyboard().text(
-          '📊 Obuna holati',
-          'check_status',
-        );
-
-        await ctx.editMessageText(
-          `⚠️ Siz allaqachon obuna bo'lgansiz ✅\n\nObuna tugash muddati: ${existingSubscription.subscriptionEnd.getDate().toString().padStart(2, '0')}.${(existingSubscription.subscriptionEnd.getMonth() + 1).toString().padStart(2, '0')}.${existingSubscription.subscriptionEnd.getFullYear()}`,
-          { reply_markup: keyboard },
-        );
-        return;
-      }
-
       ctx.session.hasAgreedToTerms = false;
 
       const keyboard = new InlineKeyboard()
