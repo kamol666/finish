@@ -7,7 +7,7 @@ import logger from 'src/shared/utils/logger';
 import { PaymeSubsApiService } from '../payment-providers/payme-subs-api/payme-subs-api.service';
 import { ClickSubsApiService } from '../payment-providers/click-subs-api/click-subs-api.service';
 import { UzcardOnetimeApiService } from '../payment-providers/uzcard-onetime-api/uzcard-onetime-api.service';
-import { buildSubscriptionManagementLink } from 'src/shared/utils/payment-link.util';
+import { buildSubscriptionManagementLink, buildSubscriptionCancellationLink } from 'src/shared/utils/payment-link.util';
 
 @Injectable()
 export class SubscriptionManagementService {
@@ -69,6 +69,10 @@ export class SubscriptionManagementService {
 
   getCancellationLink(): string | undefined {
     return this.resolveCancellationLink();
+  }
+
+  buildCancellationUrlForUser(telegramId: number | string): string | undefined {
+    return buildSubscriptionCancellationLink(telegramId);
   }
 
   private parseTelegramId(input: string): number {

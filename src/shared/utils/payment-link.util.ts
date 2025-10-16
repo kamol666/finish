@@ -114,3 +114,17 @@ export function buildSubscriptionManagementLink(path: string): string | undefine
   const trimmedPath = path.replace(/^\/+/, '');
   return `${base}/${trimmedPath}`;
 }
+
+export function buildSubscriptionCancellationLink(telegramId: number | string): string | undefined {
+  if (!telegramId) {
+    return undefined;
+  }
+
+  const base = resolveSubscriptionManagementBase();
+  if (!base) {
+    return undefined;
+  }
+
+  const trimmedId = encodeURIComponent(String(telegramId));
+  return `${base}/subscription/cancel?token=${trimmedId}`;
+}

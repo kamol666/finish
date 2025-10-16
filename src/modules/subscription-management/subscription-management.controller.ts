@@ -1,6 +1,8 @@
-import { Body, Controller, Get, Header, Post, Render, HttpException } from '@nestjs/common';
+import { Body, Controller, Get, Header, Post, Query, Render, HttpException, BadRequestException } from '@nestjs/common';
 import { SubscriptionManagementService } from './subscription-management.service';
 import { CancelSubscriptionDto } from './dto/cancel-subscription.dto';
+import { config } from 'src/shared/config';
+import { verifySignedToken } from 'src/shared/utils/signed-token.util';
 
 @Controller('subscription')
 export class SubscriptionManagementController {
@@ -11,11 +13,15 @@ export class SubscriptionManagementController {
   @Get('cancel')
   @Header('Content-Type', 'text/html')
   @Render('subscription/cancel')
-  showCancellationForm() {
+  showCancellationForm(@Query('token') token?: string) {
+    const telegramId = this.parseToken(token);
     return {
       status: null,
       message: null,
-      form: {},
+      form: {
+        telegramId,
+      },
+      token,
     };
   }
 
@@ -31,14 +37,20 @@ export class SubscriptionManagementController {
   @Post('cancel')
   @Header('Content-Type', 'text/html')
   @Render('subscription/cancel')
-  async handleCancellation(@Body() body: CancelSubscriptionDto) {
+  async handleCancellation(@Body() body: CancelSubscriptionDto, @Query('token') token?: string) {
     try {
+      const telegramId = this.parseToken(token);
+      if (!telegramId) {
+        throw new BadRequestException('Bekor qilish havolasi noto‘g‘ri.');
+      }
+
       const result =
-        await this.subscriptionManagementService.cancelSubscription(body);
+        await this.subscriptionManagementService.cancelSubscription({ telegramId });
       return {
         status: 'success',
         message: result.message,
         form: {},
+        token,
       };
     } catch (error) {
       let message = 'Nomaʼlum xatolik yuz berdi. Keyinroq urinib ko‘ring.';
@@ -63,9 +75,23 @@ export class SubscriptionManagementController {
         status: 'error',
         message,
         form: {
-          telegramId: body.telegramId,
+          telegramId: telegramId ?? body.telegramId,
         },
+        token,
       };
+    }
+  }
+
+  private parseToken(token?: string): string | undefined {
+    if (!token) {
+      return undefined;
+    }
+
+    try {
+      const payload = verifySignedToken<{ telegramId: string | number }>(token, config.PAYMENT_LINK_SECRET);
+      return String(payload.telegramId);
+    } catch (error) {
+      throw new BadRequestException('Bekor qilish havolasi eskirgan yoki noto‘g‘ri.');
     }
   }
 }
