@@ -764,9 +764,7 @@ ${expirationLabel} ${subscriptionEndDate}`;
       const keyboard = new InlineKeyboard()
         .url('📄 Foydalanish shartlari', this.subscriptionTermsLink)
         .row()
-        .text('✅ Qabul qilaman', 'agree_terms')
-        .row()
-        .text('❌ Bekor qilish', 'main_menu');
+        .text('✅ Qabul qilaman', 'agree_terms');
 
       await ctx.editMessageText(
         '📜 <b>Foydalanish shartlari va shartlar:</b>\n\n' +
@@ -963,9 +961,7 @@ ${expirationLabel} ${subscriptionEndDate}`;
       const keyboard = new InlineKeyboard()
         .url('📄 Foydalanish shartlari', this.subscriptionTermsLink)
         .row()
-        .text('✅ Qabul qilaman', 'agree_terms')
-        .row()
-        .text('❌ Bekor qilish', 'main_menu');
+        .text('✅ Qabul qilaman', 'agree_terms');
 
       await ctx.editMessageText(
         '📜 <b>Foydalanish shartlari va shartlar:</b>\n\n' +
