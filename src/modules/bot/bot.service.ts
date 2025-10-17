@@ -550,7 +550,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       back_to_payment_types: this.showPaymentTypeSelection.bind(this),
       subscribe: this.handleSubscribeCallback.bind(this),
       check_status: this.handleStatus.bind(this),
-      renew: this.handleRenew.bind(this),
+      cancel_subscription: this.handleSubscriptionCancellation.bind(this),
       main_menu: this.showMainMenu.bind(this),
       confirm_subscribe_basic: this.confirmSubscription.bind(this),
       agree_terms: this.handleAgreement.bind(this),
@@ -577,7 +577,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       .row()
       .text('📊 Obuna holati', 'check_status')
       .row()
-      .text('🔄 Obunani yangilash', 'renew');
+      .text('🛑 Obunani bekor qilish', 'cancel_subscription');
 
     const message = `Assalomu alaykum, ${ctx.from?.first_name}! 👋\n\n Munajjim premium kontentiga xush kelibsiz 🏆\n\nQuyidagi tugmalardan birini tanlang:`;
 
@@ -909,73 +909,43 @@ ${expirationLabel} ${subscriptionEndDate}`;
     }
   }
 
-  private async handleRenew(ctx: BotContext): Promise<void> {
+  private async handleSubscriptionCancellation(ctx: BotContext): Promise<void> {
     try {
       const telegramId = ctx.from?.id;
-      const user = await UserModel.findOne({ telegramId });
-      if (!user) {
+      if (!telegramId) {
         await ctx.answerCallbackQuery(
           "Foydalanuvchi ID'sini olishda xatolik yuz berdi.",
         );
         return;
       }
 
-      const existingSubscription =
-        await this.subscriptionService.getSubscription(user._id as string);
-
-      if (!existingSubscription?.isActive || !existingSubscription) {
-        const keyboard = new InlineKeyboard()
-          .text("🎯 Obuna bo'lish", 'subscribe')
-          .row()
-          .text('🔙 Asosiy menyu', 'main_menu');
-
-        await ctx.editMessageText(
-          "⚠️ Siz hali obuna bo'lmagansiz. Obuna bo'lish uchun quyidagi tugmani bosing:",
-          { reply_markup: keyboard },
+      const link = buildSubscriptionCancellationLink(telegramId);
+      if (!link) {
+        await ctx.answerCallbackQuery(
+          'Bekor qilish havolasini yaratib bo‘lmadi. Keyinroq urinib ko‘ring.',
+          { show_alert: true },
         );
         return;
       }
-
-      const now = new Date();
-      const daysUntilExpiration = Math.ceil(
-        (existingSubscription.subscriptionEnd.getTime() - now.getTime()) /
-        (1000 * 60 * 60 * 24),
-      );
-
-      if (existingSubscription.isActive && daysUntilExpiration > 3) {
-        const keyboard = new InlineKeyboard()
-          .text('📊 Obuna holati', 'check_status')
-          .row()
-          .text('🔙 Asosiy menyu', 'main_menu');
-
-        await ctx.editMessageText(
-          `⚠️ Sizning obunangiz hali faol va ${daysUntilExpiration} kundan so'ng tugaydi.\n\n` +
-          `Obunani faqat muddati tugashiga 3 kun qolganda yoki muddati tugagandan so'ng yangilash mumkin.`,
-          { reply_markup: keyboard },
-        );
-        return;
-      }
-
-      ctx.session.hasAgreedToTerms = false;
 
       const keyboard = new InlineKeyboard()
-        .url('📄 Foydalanish shartlari', this.subscriptionTermsLink)
+        .url('🛑 Obunani bekor qilish', link)
         .row()
-        .text('✅ Qabul qilaman', 'agree_terms');
+        .text('🔙 Asosiy menyu', 'main_menu');
 
       await ctx.editMessageText(
-        '📜 <b>Foydalanish shartlari va shartlar:</b>\n\n' +
-          'Iltimos, obunani yangilashdan oldin foydalanish shartlari bilan tanishib chiqing.\n\n' +
-          `${this.buildCancellationNotice(ctx.from?.id)}\n\n` +
-          'Tugmani bosib foydalanish shartlarini o\'qishingiz mumkin. Shartlarni qabul qilganingizdan so\'ng "Qabul qilaman" tugmasini bosing.',
+        'Obunani bekor qilish uchun quyidagi havoladan foydalaning. Havola shaxsiy va faqat siz uchun amal qiladi.',
         {
           reply_markup: keyboard,
           parse_mode: 'HTML',
         },
       );
     } catch (error) {
-      logger.error('Renewal error:', error);
-      await ctx.answerCallbackQuery('Obunani yangilashda xatolik yuz berdi.');
+      logger.error('Subscription cancellation link error:', error);
+      await ctx.answerCallbackQuery(
+        'Bekor qilish havolasini olishda xatolik yuz berdi.',
+        { show_alert: true },
+      );
     }
   }
 
