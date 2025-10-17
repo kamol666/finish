@@ -93,7 +93,9 @@ function deriveApiBaseFromPaymentLink(paymentLinkBase: string): string | undefin
 }
 
 export function resolveSubscriptionManagementBase(): string | undefined {
-  const explicitBase = config.SUBSCRIPTION_MANAGEMENT_BASE_URL?.trim();
+  const explicitBase =
+    config.SUBSCRIPTION_BASE_URL?.trim() ??
+    config.SUBSCRIPTION_MANAGEMENT_BASE_URL?.trim();
   if (explicitBase) {
     return sanitizeBase(explicitBase);
   }

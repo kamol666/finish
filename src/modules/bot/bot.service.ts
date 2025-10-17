@@ -68,6 +68,11 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
   }
 
   private resolveSubscriptionTermsLink(): string {
+    const configured = config.SUBSCRIPTION_TERMS_URL?.trim();
+    if (configured) {
+      return configured;
+    }
+
     const derived = buildSubscriptionManagementLink('subscription/terms');
     if (derived) {
       return derived;

@@ -11,6 +11,7 @@ import { ClickSubsApiModule } from './modules/payment-providers/click-subs-api/c
 import { PaymeSubsApiModule } from './modules/payment-providers/payme-subs-api/payme-subs-api.module';
 import { PaymentLinkModule } from './modules/payment-link/payment-link.module';
 import { SubscriptionManagementModule } from './modules/subscription-management/subscription-management.module';
+import { LinksModule } from './modules/links/links.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SubscriptionManagementModule } from './modules/subscription-management/
     PaymeSubsApiModule,
     PaymentLinkModule,
     SubscriptionManagementModule,
+    LinksModule,
   ],
   controllers: [AppController],
   providers: [AppService],
