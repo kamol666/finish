@@ -551,10 +551,6 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       subscribe: this.handleSubscribeCallback.bind(this),
       check_status: this.handleStatus.bind(this),
       cancel_subscription: this.handleSubscriptionCancellation.bind(this),
-      subscription_saved_click: (ctx) =>
-        this.handleSubscriptionPaymentWithSavedCard(ctx, CardType.CLICK),
-      subscription_saved_payme: (ctx) =>
-        this.handleSubscriptionPaymentWithSavedCard(ctx, CardType.PAYME),
       main_menu: this.showMainMenu.bind(this),
       confirm_subscribe_basic: this.confirmSubscription.bind(this),
       agree_terms: this.handleAgreement.bind(this),
@@ -977,116 +973,12 @@ ${expirationLabel} ${subscriptionEndDate}`;
 
   private async handleSubscriptionPaymentWithSavedCard(
     ctx: BotContext,
-    provider: CardType,
+    _provider: CardType,
   ): Promise<void> {
-    try {
-      const telegramId = ctx.from?.id;
-      if (!telegramId) {
-        await ctx.answerCallbackQuery({
-          text: "Foydalanuvchi ID'sini olishda xatolik yuz berdi.",
-          show_alert: true,
-        } as any);
-        return;
-      }
-
-      const user = await UserModel.findOne({ telegramId }).exec();
-      if (!user) {
-        await ctx.answerCallbackQuery({
-          text: 'Kechirasiz, tizimda foydalanuvchi topilmadi.',
-          show_alert: true,
-        } as any);
-        return;
-      }
-
-      const card = await UserCardsModel.findOne({
-        userId: user._id,
-        cardType: provider,
-        verified: true,
-        isDeleted: { $ne: true },
-      }).exec();
-
-      if (!card) {
-        await ctx.answerCallbackQuery({
-          text: 'Saqlangan karta topilmadi. Iltimos, kartani qayta bog‘lang.',
-          show_alert: true,
-        } as any);
-        return;
-      }
-
-      const selectedService = await this.selectedServiceChecker(ctx);
-      const plan = await Plan.findOne({ selectedName: selectedService }).exec();
-
-      if (!plan) {
-        await ctx.answerCallbackQuery({
-          text: "Obuna rejasi topilmadi. Iltimos, qayta urinib ko'ring.",
-          show_alert: true,
-        } as any);
-        return;
-      }
-
-      const { success, user: updatedUser } =
-        await this.subscriptionService.renewSubscriptionWithCard(
-          user._id.toString(),
-          telegramId,
-          provider,
-          plan,
-          user.username,
-          selectedService,
-        );
-
-      if (!success) {
-        await ctx.answerCallbackQuery({
-          text: 'To‘lov amalga oshmadi. Kartangizni tekshirib qayta urinib ko‘ring.',
-          show_alert: true,
-        } as any);
-        return;
-      }
-
-      await ctx.answerCallbackQuery({ text: '✅ To‘lov qabul qilindi!', show_alert: true } as any);
-
-      if (updatedUser) {
-        await this.revokeUserInviteLink(updatedUser, false);
-
-        const privateLink = await this.getPrivateLink();
-        updatedUser.activeInviteLink = privateLink.invite_link;
-        await updatedUser.save();
-
-        const keyboard = new InlineKeyboard()
-          .url('🔗 Kanalga kirish', privateLink.invite_link)
-          .row()
-          .text('📊 Obuna holati', 'check_status')
-          .row()
-          .text('🔙 Asosiy menyu', 'main_menu');
-
-        const endDate = updatedUser.subscriptionEnd
-          ? new Date(updatedUser.subscriptionEnd)
-          : new Date();
-        const formattedEndDate = `${endDate
-          .getDate()
-          .toString()
-          .padStart(2, '0')}.${(endDate.getMonth() + 1)
-          .toString()
-          .padStart(2, '0')}.${endDate.getFullYear()}`;
-
-        await this.bot.api.sendMessage(
-          telegramId,
-          `✅ To'lov muvaffaqiyatli amalga oshirildi!
-📆 Obuna muddati: ${formattedEndDate} gacha
-
-Quyidagi havola orqali kanalga kirishingiz mumkin:`,
-          {
-            reply_markup: keyboard,
-            parse_mode: 'HTML',
-          },
-        );
-      }
-    } catch (error) {
-      logger.error('Saved card subscription payment error:', error);
-      await ctx.answerCallbackQuery({
-        text: 'To‘lovni qayta ishlashda xatolik yuz berdi.',
-        show_alert: true,
-      } as any);
-    }
+    await ctx.answerCallbackQuery({
+      text: 'Saqlangan karta orqali to\'lov hozircha qo\'llab-quvvatlanmaydi.',
+      show_alert: true,
+    } as any);
   }
 
   private async createUserIfNotExist(ctx: BotContext): Promise<void> {
@@ -1299,47 +1191,16 @@ Quyidagi havola orqali kanalga kirishingiz mumkin:`,
       process.env.BASE_PAYME_URL +
       `?userId=${userId}&planId=${plan._id}&selectedService=${selectedService}`;
 
-    const keyboard = new InlineKeyboard();
-
-    keyboard.url('🏦 Uzcard/Humo (30 kun bepul)', uzcardUrl).row();
-
-    const savedCards = await UserCardsModel.find({
-      userId,
-      verified: true,
-      isDeleted: { $ne: true },
-    })
-      .select('cardType incompleteCardNumber')
-      .lean();
-
-    const hasClickCard = savedCards.some(
-      (card) => card.cardType === CardType.CLICK,
-    );
-    const hasPaymeCard = savedCards.some(
-      (card) => card.cardType === CardType.PAYME,
-    );
-
-    if (hasClickCard) {
-      keyboard
-        .text('♻️ Click (saqlangan karta)', 'subscription_saved_click')
-        .row();
-    }
-
-    keyboard.url('💳 Click (30 kun bepul)', clickUrl).row();
-
-    if (hasPaymeCard) {
-      keyboard
-        .text('♻️ Payme (saqlangan karta)', 'subscription_saved_payme')
-        .row();
-    }
-
-    keyboard.url('📲 Payme (30 kun bepul)', paymeUrl).row();
-
-    keyboard
+    return new InlineKeyboard()
+      .url('🏦 Uzcard/Humo (30 kun bepul)', uzcardUrl)
+      .row()
+      .url('💳 Click (30 kun bepul)', clickUrl)
+      .row()
+      .url('📲 Payme (30 kun bepul)', paymeUrl)
+      .row()
       .text('🔙 Orqaga', 'back_to_payment_types')
       .row()
       .text('🏠 Asosiy menyu', 'main_menu');
-
-    return keyboard;
   }
 
   private userHasActiveSubscription(user: IUserDocument): boolean {
