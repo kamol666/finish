@@ -1190,9 +1190,9 @@ ${expirationLabel} ${subscriptionEndDate}`;
     keyboard
       .url('🏦 Uzcard/Humo (30 kun bepul)', uzcardUrl)
       .row()
-      .url('💳 Click (20 kun bepul)', clickUrl)
+      .url('💳 Click (30 kun bepul)', clickUrl)
       .row()
-      .url('📲 Payme (10 kun bepul)', paymeUrl)
+      .url('📲 Payme (30 kun bepul)', paymeUrl)
       .row()
       .text('🔙 Orqaga', 'back_to_payment_types')
       .row()
