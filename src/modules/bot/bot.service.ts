@@ -919,6 +919,30 @@ ${expirationLabel} ${subscriptionEndDate}`;
         return;
       }
 
+      const user = await UserModel.findOne({ telegramId }).exec();
+      if (!user) {
+        await ctx.answerCallbackQuery(
+          'Kechirasiz, siz tizimda ro‘yxatdan o‘tmagansiz.',
+          { show_alert: true },
+        );
+        return;
+      }
+
+      const activeSubscription = await this.subscriptionService.getSubscription(
+        user._id as string,
+      );
+
+      if (
+        !activeSubscription ||
+        !this.userHasActiveSubscription(activeSubscription)
+      ) {
+        await ctx.answerCallbackQuery(
+          'Kechirasiz, hozirda sizda faol obuna yo‘q.',
+          { show_alert: true },
+        );
+        return;
+      }
+
       const link = buildSubscriptionCancellationLink(telegramId);
       if (!link) {
         await ctx.answerCallbackQuery(
