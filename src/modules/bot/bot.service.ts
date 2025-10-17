@@ -913,18 +913,19 @@ ${expirationLabel} ${subscriptionEndDate}`;
     try {
       const telegramId = ctx.from?.id;
       if (!telegramId) {
-        await ctx.answerCallbackQuery(
-          "Foydalanuvchi ID'sini olishda xatolik yuz berdi.",
-        );
+        await ctx.answerCallbackQuery({
+          text: "Foydalanuvchi ID'sini olishda xatolik yuz berdi.",
+          show_alert: true,
+        } as any);
         return;
       }
 
       const user = await UserModel.findOne({ telegramId }).exec();
       if (!user) {
-        await ctx.answerCallbackQuery(
-          'Kechirasiz, siz tizimda ro‘yxatdan o‘tmagansiz.',
-          { show_alert: true },
-        );
+        await ctx.answerCallbackQuery({
+          text: 'Kechirasiz, siz tizimda ro‘yxatdan o‘tmagansiz.',
+          show_alert: true,
+        } as any);
         return;
       }
 
@@ -932,23 +933,20 @@ ${expirationLabel} ${subscriptionEndDate}`;
         user._id as string,
       );
 
-      if (
-        !activeSubscription ||
-        !this.userHasActiveSubscription(activeSubscription)
-      ) {
-        await ctx.answerCallbackQuery(
-          'Kechirasiz, hozirda sizda faol obuna yo‘q.',
-          { show_alert: true },
-        );
+      if (!activeSubscription || !this.userHasActiveSubscription(activeSubscription)) {
+        await ctx.answerCallbackQuery({
+          text: 'Kechirasiz, hozirda sizda faol obuna yo‘q.',
+          show_alert: true,
+        } as any);
         return;
       }
 
       const link = buildSubscriptionCancellationLink(telegramId);
       if (!link) {
-        await ctx.answerCallbackQuery(
-          'Bekor qilish havolasini yaratib bo‘lmadi. Keyinroq urinib ko‘ring.',
-          { show_alert: true },
-        );
+        await ctx.answerCallbackQuery({
+          text: 'Bekor qilish havolasini yaratib bo‘lmadi. Keyinroq urinib ko‘ring.',
+          show_alert: true,
+        } as any);
         return;
       }
 
@@ -966,10 +964,10 @@ ${expirationLabel} ${subscriptionEndDate}`;
       );
     } catch (error) {
       logger.error('Subscription cancellation link error:', error);
-      await ctx.answerCallbackQuery(
-        'Bekor qilish havolasini olishda xatolik yuz berdi.',
-        { show_alert: true },
-      );
+      await ctx.answerCallbackQuery({
+        text: 'Bekor qilish havolasini olishda xatolik yuz berdi.',
+        show_alert: true,
+      } as any);
     }
   }
 
