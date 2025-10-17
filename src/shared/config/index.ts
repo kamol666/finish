@@ -26,6 +26,7 @@ export const config = cleanEnv(process.env, {
   PAYME_PASSWORD_TEST: str(),
   PAYMENT_LINK_SECRET: str({ default: 'replace-me-with-secure-secret' }),
   PAYMENT_LINK_BASE_URL: str({ default: '' }),
+  SUBSCRIPTION_BASE_URL: str({ default: '' }),
   SUBSCRIPTION_MANAGEMENT_BASE_URL: str({ default: '' }),
   SUBSCRIPTION_TERMS_URL: str({ default: 'https://surl.li/takrle' }),
   API_PREFIX: str({ default: 'api' }),
