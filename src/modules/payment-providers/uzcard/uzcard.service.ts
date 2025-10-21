@@ -186,7 +186,11 @@ export class UzCardApiService {
         incompleteCardNumber: incompleteCardNumber,
       });
 
-      if (existingUserCard) {
+      if (
+        existingUserCard &&
+        existingUserCard.telegramId !== user.telegramId &&
+        existingUserCard.isDeleted !== true
+      ) {
         return {
           success: false,
           errorCode: 'card_already_exists',
@@ -198,27 +202,37 @@ export class UzCardApiService {
       // Check if user already has a UZCARD card
       const existingCard = await UserCardsModel.findOne({
         telegramId: user.telegramId,
-        cardType: CardType.UZCARD
+        cardType: CardType.UZCARD,
       });
 
-      let userCard;
-      if (existingCard) {
+      let userCard =
+        existingCard ||
+        (existingUserCard?.telegramId === user.telegramId
+          ? existingUserCard
+          : undefined);
+
+      if (userCard) {
         // Update existing card
         logger.info(`Updating existing UZCARD card for user: ${user.telegramId}`);
-        existingCard.incompleteCardNumber = incompleteCardNumber;
-        existingCard.cardToken = cardId;
-        existingCard.expireDate = expireDate;
-        existingCard.verificationCode = parseInt(request.otp);
-        existingCard.verified = true;
-        existingCard.verifiedDate = new Date();
-        existingCard.planId = plan._id as any;
-        existingCard.UzcardIsTrusted = isTrusted;
-        existingCard.UzcardBalance = balance;
-        existingCard.UzcardId = cardId;
-        existingCard.UzcardOwner = owner;
-        existingCard.UzcardIncompleteNumber = incompleteCardNumber;
-        existingCard.UzcardIdForDeleteCard = cardIdForDelete;
-        userCard = await existingCard.save();
+        userCard.telegramId = user.telegramId;
+        userCard.username = user.username ? user.username : undefined;
+        userCard.userId = user._id;
+        userCard.planId = plan._id as any;
+        userCard.incompleteCardNumber = incompleteCardNumber;
+        userCard.cardToken = cardId;
+        userCard.expireDate = expireDate;
+        userCard.verificationCode = parseInt(request.otp);
+        userCard.verified = true;
+        userCard.verifiedDate = new Date();
+        userCard.isDeleted = false;
+        userCard.deletedAt = undefined;
+        userCard.UzcardIsTrusted = isTrusted;
+        userCard.UzcardBalance = balance;
+        userCard.UzcardId = cardId;
+        userCard.UzcardOwner = owner;
+        userCard.UzcardIncompleteNumber = incompleteCardNumber;
+        userCard.UzcardIdForDeleteCard = cardIdForDelete;
+        userCard = await userCard.save();
       } else {
         // Create new card
         logger.info(`Creating new UZCARD card for user: ${user.telegramId}`);
@@ -240,6 +254,8 @@ export class UzCardApiService {
           UzcardOwner: owner,
           UzcardIncompleteNumber: incompleteCardNumber,
           UzcardIdForDeleteCard: cardIdForDelete,
+          isDeleted: false,
+          deletedAt: undefined,
         });
       }
 

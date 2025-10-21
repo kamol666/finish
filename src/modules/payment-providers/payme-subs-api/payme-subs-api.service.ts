@@ -229,10 +229,12 @@ export class PaymeSubsApiService {
                     logger.info(`Reviving deleted PAYME card for user: ${user.telegramId}`);
                     existingUserCard.telegramId = user.telegramId;
                     existingUserCard.username = user.username ? user.username : undefined;
-                    existingUserCard.cardToken = response.data.result.card.token;
-                    existingUserCard.expireDate = response.data.result.card.expire;
                     existingUserCard.userId = requestBody.userId;
                     existingUserCard.planId = requestBody.planId as any;
+                    existingUserCard.incompleteCardNumber = response.data.result.card.number;
+                    existingUserCard.cardType = CardType.PAYME;
+                    existingUserCard.cardToken = response.data.result.card.token;
+                    existingUserCard.expireDate = response.data.result.card.expire;
                     existingUserCard.verificationCode = requestBody.code;
                     existingUserCard.verified = true;
                     existingUserCard.verifiedDate = new Date(time);
@@ -417,11 +419,28 @@ export class PaymeSubsApiService {
             return;
         }
 
-        const userCard = await UserCardsModel.findOne({
+        let userCard = await UserCardsModel.findOne({
             userId: userId,
             cardType: CardType.PAYME,
             isDeleted: { $ne: true },
         });
+        if (!userCard) {
+            userCard = await UserCardsModel.findOne({
+                telegramId: user.telegramId,
+                cardType: CardType.PAYME,
+            }).sort({ updatedAt: -1 });
+
+            if (userCard) {
+                logger.warn(
+                  `PAYME card for user ${user.telegramId} reactivated during payment because initial lookup by userId failed`,
+                );
+                userCard.isDeleted = false;
+                userCard.deletedAt = undefined;
+                userCard.userId = userId;
+                userCard.cardType = CardType.PAYME;
+                await userCard.save();
+            }
+        }
         if (!userCard) {
             logger.error('User card not found');
             return;
