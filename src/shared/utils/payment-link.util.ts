@@ -79,14 +79,7 @@ export function buildMaskedPaymentLink(path: string): string | undefined {
 function deriveApiBaseFromPaymentLink(paymentLinkBase: string): string | undefined {
   try {
     const url = new URL(paymentLinkBase);
-    const segments = url.pathname.split('/').filter(Boolean);
-
-    if (segments.length && segments[segments.length - 1] === ROUTE_PREFIX) {
-      segments.pop();
-      url.pathname = segments.length ? `/${segments.join('/')}` : '/';
-    }
-
-    return sanitizeBase(url.toString());
+    return sanitizeBase(url.origin);
   } catch {
     return undefined;
   }
