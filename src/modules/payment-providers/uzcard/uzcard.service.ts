@@ -221,6 +221,12 @@ export class UzCardApiService {
       });
 
       if (!userCard) {
+        userCard = await UserCardsModel.findOne({
+          telegramId: user.telegramId,
+        });
+      }
+
+      if (!userCard) {
         logger.info(`Creating new UZCARD card for user: ${user.telegramId}`);
         userCard = new UserCardsModel({
           telegramId: user.telegramId,
