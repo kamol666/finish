@@ -215,33 +215,40 @@ export class UzCardApiService {
         };
       }
 
-      const userCard = await UserCardsModel.findOneAndUpdate(
-        { telegramId: user.telegramId, cardType: CardType.UZCARD },
-        {
-          $set: {
-            telegramId: user.telegramId,
-            username: user.username ? user.username : undefined,
-            userId: user._id,
-            planId: plan._id as any,
-            incompleteCardNumber,
-            cardToken: cardId,
-            expireDate,
-            verificationCode: parseInt(request.otp),
-            verified: true,
-            verifiedDate: new Date(),
-            cardType: CardType.UZCARD,
-            UzcardIsTrusted: isTrusted,
-            UzcardBalance: balance,
-            UzcardId: cardId,
-            UzcardOwner: owner,
-            UzcardIncompleteNumber: incompleteCardNumber,
-            UzcardIdForDeleteCard: cardIdForDelete,
-            isDeleted: false,
-            deletedAt: undefined,
-          },
-        },
-        { new: true, upsert: true },
-      );
+      let userCard = await UserCardsModel.findOne({
+        telegramId: user.telegramId,
+        cardType: CardType.UZCARD,
+      });
+
+      if (!userCard) {
+        logger.info(`Creating new UZCARD card for user: ${user.telegramId}`);
+        userCard = new UserCardsModel({
+          telegramId: user.telegramId,
+          cardType: CardType.UZCARD,
+        });
+      } else {
+        logger.info(`Updating existing UZCARD card for user: ${user.telegramId}`);
+      }
+
+      userCard.username = user.username ? user.username : undefined;
+      userCard.userId = user._id;
+      userCard.planId = plan._id as any;
+      userCard.incompleteCardNumber = incompleteCardNumber;
+      userCard.cardToken = cardId;
+      userCard.expireDate = expireDate;
+      userCard.verificationCode = parseInt(request.otp);
+      userCard.verified = true;
+      userCard.verifiedDate = new Date();
+      userCard.UzcardIsTrusted = isTrusted;
+      userCard.UzcardBalance = balance;
+      userCard.UzcardId = cardId;
+      userCard.UzcardOwner = owner;
+      userCard.UzcardIncompleteNumber = incompleteCardNumber;
+      userCard.UzcardIdForDeleteCard = cardIdForDelete;
+      userCard.isDeleted = false;
+      userCard.deletedAt = undefined;
+
+      await userCard.save();
 
       logger.info(`User card created: ${JSON.stringify(userCard)}`);
 

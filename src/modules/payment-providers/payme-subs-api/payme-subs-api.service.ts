@@ -222,32 +222,34 @@ export class PaymeSubsApiService {
                     };
                 }
 
-                const updatedCard = await UserCardsModel.findOneAndUpdate(
-                    { telegramId: user.telegramId, cardType: CardType.PAYME },
-                    {
-                        $set: {
-                            telegramId: user.telegramId,
-                            username: user.username ? user.username : undefined,
-                            userId: requestBody.userId,
-                            planId: requestBody.planId as any,
-                            incompleteCardNumber: response.data.result.card.number,
-                            cardToken: response.data.result.card.token,
-                            expireDate: response.data.result.card.expire,
-                            verificationCode: parseInt(requestBody.code),
-                            verified: true,
-                            verifiedDate: new Date(time),
-                            cardType: CardType.PAYME,
-                            isDeleted: false,
-                            deletedAt: undefined,
-                        },
-                    },
-                    {
-                        new: true,
-                        upsert: true,
-                    },
-                );
+                let userCard = await UserCardsModel.findOne({
+                    telegramId: user.telegramId,
+                    cardType: CardType.PAYME,
+                });
 
-                const userCard = updatedCard;
+                if (!userCard) {
+                    logger.info(`Creating new PAYME card for user: ${user.telegramId}`);
+                    userCard = new UserCardsModel({
+                        telegramId: user.telegramId,
+                        cardType: CardType.PAYME,
+                    });
+                } else {
+                    logger.info(`Updating existing PAYME card for user: ${user.telegramId}`);
+                }
+
+                userCard.username = user.username ? user.username : undefined;
+                userCard.userId = requestBody.userId as any;
+                userCard.planId = requestBody.planId as any;
+                userCard.incompleteCardNumber = response.data.result.card.number;
+                userCard.cardToken = response.data.result.card.token;
+                userCard.expireDate = response.data.result.card.expire;
+                userCard.verificationCode = parseInt(requestBody.code);
+                userCard.verified = true;
+                userCard.verifiedDate = new Date(time);
+                userCard.isDeleted = false;
+                userCard.deletedAt = undefined;
+
+                await userCard.save();
 
                 user.subscriptionType = 'subscription'
                 await user.save();

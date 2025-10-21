@@ -164,27 +164,34 @@ export class ClickSubsApiService {
                 };
             }
 
-            const userCard = await UserCardsModel.findOneAndUpdate(
-                { telegramId: user.telegramId, cardType: CardType.CLICK },
-                {
-                    $set: {
-                        telegramId: user.telegramId,
-                        username: user.username ? user.username : undefined,
-                        userId: requestBody.userId,
-                        planId: requestBody.planId as any,
-                        incompleteCardNumber: response.data.card_number,
-                        cardToken: requestBodyWithServiceId.card_token,
-                        expireDate: requestBody.expireDate,
-                        verificationCode: requestBody.sms_code,
-                        verified: true,
-                        verifiedDate: new Date(time),
-                        cardType: CardType.CLICK,
-                        isDeleted: false,
-                        deletedAt: undefined,
-                    },
-                },
-                { new: true, upsert: true },
-            );
+            let userCard = await UserCardsModel.findOne({
+                telegramId: user.telegramId,
+                cardType: CardType.CLICK,
+            });
+
+            if (!userCard) {
+                logger.info(`Creating new CLICK card for user: ${user.telegramId}`);
+                userCard = new UserCardsModel({
+                    telegramId: user.telegramId,
+                    cardType: CardType.CLICK,
+                });
+            } else {
+                logger.info(`Updating existing CLICK card for user: ${user.telegramId}`);
+            }
+
+            userCard.username = user.username ? user.username : undefined;
+            userCard.userId = requestBody.userId as any;
+            userCard.planId = requestBody.planId as any;
+            userCard.incompleteCardNumber = response.data.card_number;
+            userCard.cardToken = requestBodyWithServiceId.card_token;
+            userCard.expireDate = requestBody.expireDate;
+            userCard.verificationCode = requestBody.sms_code;
+            userCard.verified = true;
+            userCard.verifiedDate = new Date(time);
+            userCard.isDeleted = false;
+            userCard.deletedAt = undefined;
+
+            await userCard.save();
             const endDate = new Date();
             endDate.setDate(endDate.getDate() + 30);
 
