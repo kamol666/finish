@@ -92,6 +92,31 @@ function deriveApiBaseFromPaymentLink(paymentLinkBase: string): string | undefin
   }
 }
 
+function ensureApiPrefix(base: string): string {
+  const prefix = config.API_PREFIX?.trim();
+  if (!prefix) {
+    return sanitizeBase(base);
+  }
+
+  const normalizedPrefix = prefix.replace(/^\/+|\/+$/g, '');
+
+  try {
+    const url = new URL(base);
+    const segments = url.pathname.split('/').filter(Boolean);
+
+    if (segments.includes(normalizedPrefix)) {
+      return sanitizeBase(url.toString());
+    }
+
+    url.pathname = normalizedPrefix ? `/${normalizedPrefix}` : '/';
+    return sanitizeBase(url.toString());
+  } catch {
+    return sanitizeBase(
+      normalizedPrefix ? `${sanitizeBase(base)}/${normalizedPrefix}` : base,
+    );
+  }
+}
+
 export function resolveSubscriptionManagementBase(): string | undefined {
   const explicitBase =
     config.SUBSCRIPTION_BASE_URL?.trim() ??
@@ -105,7 +130,17 @@ export function resolveSubscriptionManagementBase(): string | undefined {
     return undefined;
   }
 
-  return deriveApiBaseFromPaymentLink(paymentBase);
+  const derived = deriveApiBaseFromPaymentLink(paymentBase);
+  if (derived) {
+    return ensureApiPrefix(derived);
+  }
+
+  try {
+    const url = new URL(paymentBase);
+    return ensureApiPrefix(`${url.origin}`);
+  } catch {
+    return undefined;
+  }
 }
 
 export function buildSubscriptionManagementLink(path: string): string | undefined {
