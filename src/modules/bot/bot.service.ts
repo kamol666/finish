@@ -143,7 +143,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       if (success) {
         await this.revokeUserInviteLink(subscription, false);
 
-        const privateLink = await this.getPrivateLink();
+        const privateLink = await this.getPrivateLink(subscription.subscriptionEnd);
         subscription.activeInviteLink = privateLink.invite_link;
         await subscription.save();
 
@@ -214,7 +214,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
       await this.revokeUserInviteLink(subscription, false);
 
-      const privateLink = await this.getPrivateLink();
+      const privateLink = await this.getPrivateLink(subscription.subscriptionEnd);
       subscription.activeInviteLink = privateLink.invite_link;
       await subscription.save();
 
@@ -289,7 +289,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
       subscription.subscriptionType = 'onetime';
 
-      const privateLink = await this.getPrivateLink();
+      const privateLink = await this.getPrivateLink(subscription.subscriptionEnd);
       subscription.activeInviteLink = privateLink.invite_link;
       await subscription.save();
 
@@ -366,7 +366,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
       await this.revokeUserInviteLink(subscription, false);
 
-      const privateLink = await this.getPrivateLink();
+      const privateLink = await this.getPrivateLink(subscription.subscriptionEnd);
       subscription.activeInviteLink = privateLink.invite_link;
       await subscription.save();
 
@@ -432,7 +432,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
       await this.revokeUserInviteLink(subscription.user, false);
 
-      const privateLink = await this.getPrivateLink();
+      const privateLink = await this.getPrivateLink(subscription.user.subscriptionEnd);
       subscription.user.activeInviteLink = privateLink.invite_link;
       await subscription.user.save();
       const keyboard = new InlineKeyboard()
@@ -729,7 +729,7 @@ ${expirationLabel} ${subscriptionEndDate}`;
       if (subscription.isActive) {
         await this.revokeUserInviteLink(subscription, false);
 
-        const privateLink = await this.getPrivateLink();
+        const privateLink = await this.getPrivateLink(subscription.subscriptionEnd);
         subscription.activeInviteLink = privateLink.invite_link;
         await subscription.save();
 
@@ -845,7 +845,7 @@ ${expirationLabel} ${subscriptionEndDate}`;
 
         await this.revokeUserInviteLink(subscription, false);
 
-        const privateLink = await this.getPrivateLink();
+        const privateLink = await this.getPrivateLink(subscription.subscriptionEnd);
         subscription.activeInviteLink = privateLink.invite_link;
         await subscription.save();
         const keyboard = new InlineKeyboard()
@@ -889,13 +889,30 @@ ${expirationLabel} ${subscriptionEndDate}`;
     }
   }
 
-  private async getPrivateLink() {
+  private async getPrivateLink(expirationDate?: Date) {
     try {
       logger.info(
         'Generating private channel invite link with channelId: ',
         config.CHANNEL_ID,
       );
-      const expireAt = Math.floor(Date.now() / 1000) + 10 * 60; // 10 daqiqa amal qiladi
+      const nowSeconds = Math.floor(Date.now() / 1000);
+      let expireAt: number | undefined;
+
+      if (expirationDate) {
+        const expiresAt = Math.floor(
+          (expirationDate instanceof Date
+            ? expirationDate.getTime()
+            : new Date(expirationDate).getTime()) / 1000,
+        );
+        if (Number.isFinite(expiresAt) && expiresAt > nowSeconds + 60) {
+          expireAt = expiresAt;
+        }
+      }
+
+      if (!expireAt) {
+        expireAt = nowSeconds + 10 * 60;
+      }
+
       const link = await this.bot.api.createChatInviteLink(
         config.CHANNEL_ID,
         {
@@ -1702,7 +1719,7 @@ ${expirationLabel} ${subscriptionEndDate}`;
 
         await this.revokeUserInviteLink(subscription, false);
 
-        const privateLink = await this.getPrivateLink();
+        const privateLink = await this.getPrivateLink(subscription.subscriptionEnd);
         subscription.activeInviteLink = privateLink.invite_link;
         await subscription.save();
         const keyboard = new InlineKeyboard()

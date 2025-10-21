@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import mongoose from 'mongoose';
 import { CancelSubscriptionDto } from './dto/cancel-subscription.dto';
 import { CardType, IUserCardsDocument, UserCardsModel } from 'src/shared/database/models/user-cards.model';
 import { UserModel } from 'src/shared/database/models/user.model';
@@ -31,6 +32,7 @@ export class SubscriptionManagementService {
       userId: user._id,
       isDeleted: { $ne: true },
     }).exec();
+    const now = new Date();
 
     for (const card of cards) {
       const providerRemoved = await this.removeProviderCard(card);
@@ -39,25 +41,55 @@ export class SubscriptionManagementService {
           `Provider removal failed for user ${user._id} cardType=${card.cardType}`,
         );
       }
-
-      card.isDeleted = true;
-      card.deletedAt = new Date();
-      await card.save();
     }
 
-    await UserSubscription.updateMany(
-      { user: user._id, isActive: true },
-      {
-        isActive: false,
-        autoRenew: false,
-        status: 'cancelled',
-        endDate: new Date(),
-      },
-    );
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        await UserCardsModel.updateMany(
+          { userId: user._id, isDeleted: { $ne: true } },
+          {
+            $set: {
+              isDeleted: true,
+              deletedAt: now,
+            },
+          },
+        )
+          .session(session)
+          .exec();
 
-    user.isActive = false;
-    user.subscriptionEnd = new Date();
-    await user.save();
+        await UserSubscription.updateMany(
+          { user: user._id, isActive: true },
+          {
+            $set: {
+              isActive: false,
+              autoRenew: false,
+              status: 'cancelled',
+              endDate: now,
+            },
+          },
+        )
+          .session(session)
+          .exec();
+
+        await UserModel.updateOne(
+          { _id: user._id },
+          {
+            $set: {
+              isActive: false,
+              subscriptionEnd: now,
+            },
+            $unset: {
+              activeInviteLink: '',
+            },
+          },
+        )
+          .session(session)
+          .exec();
+      });
+    } finally {
+      await session.endSession();
+    }
 
     logger.info(`Subscription cancelled for telegramId=${telegramId}`);
 
