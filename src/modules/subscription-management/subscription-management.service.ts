@@ -55,6 +55,18 @@ export class SubscriptionManagementService {
             isDeleted: true,
             deletedAt: now,
           },
+          $unset: {
+            cardToken: '',
+            incompleteCardNumber: '',
+            expireDate: '',
+            verificationCode: '',
+            UzcardId: '',
+            UzcardIdForDeleteCard: '',
+            UzcardIncompleteNumber: '',
+            UzcardOwner: '',
+            UzcardIsTrusted: '',
+            UzcardBalance: '',
+          },
         },
         options,
       );
