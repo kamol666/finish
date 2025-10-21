@@ -147,34 +147,44 @@ export class ClickSubsApiService {
             // Check if user already has a card and update it, otherwise create new one
             const existingCard = await UserCardsModel.findOne({ telegramId: user.telegramId, cardType: CardType.CLICK });
 
-            let userCard;
-            if (existingCard) {
-                existingCard.incompleteCardNumber = response.data.card_number;
-                existingCard.cardToken = requestBodyWithServiceId.card_token;
-                existingCard.expireDate = requestBody.expireDate;
-                existingCard.planId = requestBody.planId as any;
-                existingCard.verificationCode = requestBody.sms_code;
-                existingCard.verified = true;
-                existingCard.verifiedDate = new Date(time);
-                existingCard.isDeleted = false;
-                existingCard.deletedAt = undefined;
-                userCard = await existingCard.save();
-            } else {
-                // Create new card
-                userCard = await UserCardsModel.create({
-                    telegramId: user.telegramId,
-                    username: user.username ? user.username : undefined,
-                    incompleteCardNumber: response.data.card_number,
-                    cardToken: requestBodyWithServiceId.card_token,
-                    expireDate: requestBody.expireDate,
-                    userId: requestBody.userId,
-                    planId: requestBody.planId,
-                    verificationCode: requestBody.sms_code,
-                    verified: true,
-                    verifiedDate: new Date(time),
-                    cardType: CardType.CLICK
-                });
+            const existingCardByNumber = await UserCardsModel.findOne({
+                incompleteCardNumber: response.data.card_number,
+                cardType: CardType.CLICK,
+                telegramId: { $ne: user.telegramId },
+                isDeleted: { $ne: true },
+            });
+
+            if (existingCardByNumber) {
+                return {
+                    success: false,
+                    error: {
+                        code: -6,
+                        message: 'Bu karta raqam mavjud. Iltimos boshqa karta raqamini tanlang.',
+                    },
+                };
             }
+
+            const userCard = await UserCardsModel.findOneAndUpdate(
+                { telegramId: user.telegramId, cardType: CardType.CLICK },
+                {
+                    $set: {
+                        telegramId: user.telegramId,
+                        username: user.username ? user.username : undefined,
+                        userId: requestBody.userId,
+                        planId: requestBody.planId as any,
+                        incompleteCardNumber: response.data.card_number,
+                        cardToken: requestBodyWithServiceId.card_token,
+                        expireDate: requestBody.expireDate,
+                        verificationCode: requestBody.sms_code,
+                        verified: true,
+                        verifiedDate: new Date(time),
+                        cardType: CardType.CLICK,
+                        isDeleted: false,
+                        deletedAt: undefined,
+                    },
+                },
+                { new: true, upsert: true },
+            );
             const endDate = new Date();
             endDate.setDate(endDate.getDate() + 30);
 

@@ -202,62 +202,52 @@ export class PaymeSubsApiService {
             }
 
             try {
-                const time = new Date().getTime();
+                const time = Date.now();
                 logger.info(`Creating/updating user card for user ID: ${requestBody.userId}, with card token: ${requestBody.token}`);
 
-                // Check if user already has a PAYME card
-                const existingCard = await UserCardsModel.findOne({
-                    telegramId: user.telegramId,
-                    cardType: CardType.PAYME
+                const existingCardByNumber = await UserCardsModel.findOne({
+                    incompleteCardNumber: response.data.result.card.number,
+                    cardType: CardType.PAYME,
+                    telegramId: { $ne: user.telegramId },
+                    isDeleted: { $ne: true },
                 });
 
-                let userCard;
-                if (existingCard) {
-                    // Update existing card
-                    logger.info(`Updating existing PAYME card for user: ${user.telegramId}`);
-                    existingCard.incompleteCardNumber = response.data.result.card.number;
-                    existingCard.cardToken = response.data.result.card.token;
-                    existingCard.expireDate = response.data.result.card.expire;
-                    existingCard.planId = requestBody.planId as any;
-                    existingCard.verificationCode = parseInt(requestBody.code);
-                    existingCard.verified = true;
-                    existingCard.verifiedDate = new Date(time);
-                    existingCard.isDeleted = false;
-                    existingCard.deletedAt = undefined;
-                    userCard = await existingCard.save();
-                } else if (existingUserCard && existingUserCard.isDeleted) {
-                    logger.info(`Reviving deleted PAYME card for user: ${user.telegramId}`);
-                    existingUserCard.telegramId = user.telegramId;
-                    existingUserCard.username = user.username ? user.username : undefined;
-                    existingUserCard.userId = requestBody.userId;
-                    existingUserCard.planId = requestBody.planId as any;
-                    existingUserCard.incompleteCardNumber = response.data.result.card.number;
-                    existingUserCard.cardType = CardType.PAYME;
-                    existingUserCard.cardToken = response.data.result.card.token;
-                    existingUserCard.expireDate = response.data.result.card.expire;
-                    existingUserCard.verificationCode = requestBody.code;
-                    existingUserCard.verified = true;
-                    existingUserCard.verifiedDate = new Date(time);
-                    existingUserCard.isDeleted = false;
-                    existingUserCard.deletedAt = undefined;
-                    userCard = await existingUserCard.save();
-                } else {
-                    // Create new card
-                    logger.info(`Creating new PAYME card for user: ${user.telegramId}`);
-                    userCard = await UserCardsModel.create({
-                        telegramId: user.telegramId,
-                        username: user.username ? user.username : undefined,
-                        incompleteCardNumber: response.data.result.card.number,
-                        cardToken: response.data.result.card.token,
-                        expireDate: response.data.result.card.expire,
-                        userId: requestBody.userId,
-                        planId: requestBody.planId,
-                        verificationCode: requestBody.code,
-                        verified: true,
-                        verifiedDate: new Date(time),
-                        cardType: CardType.PAYME
-                    });
+                if (existingCardByNumber) {
+                    return {
+                        success: false,
+                        error: {
+                            code: -6,
+                            message: 'Bu karta raqam mavjud. Iltimos boshqa karta raqamini tanlang.'
+                        }
+                    };
                 }
+
+                const updatedCard = await UserCardsModel.findOneAndUpdate(
+                    { telegramId: user.telegramId, cardType: CardType.PAYME },
+                    {
+                        $set: {
+                            telegramId: user.telegramId,
+                            username: user.username ? user.username : undefined,
+                            userId: requestBody.userId,
+                            planId: requestBody.planId as any,
+                            incompleteCardNumber: response.data.result.card.number,
+                            cardToken: response.data.result.card.token,
+                            expireDate: response.data.result.card.expire,
+                            verificationCode: parseInt(requestBody.code),
+                            verified: true,
+                            verifiedDate: new Date(time),
+                            cardType: CardType.PAYME,
+                            isDeleted: false,
+                            deletedAt: undefined,
+                        },
+                    },
+                    {
+                        new: true,
+                        upsert: true,
+                    },
+                );
+
+                const userCard = updatedCard;
 
                 user.subscriptionType = 'subscription'
                 await user.save();

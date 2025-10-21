@@ -199,65 +199,49 @@ export class UzCardApiService {
         };
       }
 
-      // Check if user already has a UZCARD card
-      const existingCard = await UserCardsModel.findOne({
-        telegramId: user.telegramId,
+      const existingCardByNumber = await UserCardsModel.findOne({
+        incompleteCardNumber,
         cardType: CardType.UZCARD,
+        telegramId: { $ne: user.telegramId },
+        isDeleted: { $ne: true },
       });
 
-      let userCard =
-        existingCard ||
-        (existingUserCard?.telegramId === user.telegramId
-          ? existingUserCard
-          : undefined);
-
-      if (userCard) {
-        // Update existing card
-        logger.info(`Updating existing UZCARD card for user: ${user.telegramId}`);
-        userCard.telegramId = user.telegramId;
-        userCard.username = user.username ? user.username : undefined;
-        userCard.userId = user._id;
-        userCard.planId = plan._id as any;
-        userCard.incompleteCardNumber = incompleteCardNumber;
-        userCard.cardToken = cardId;
-        userCard.expireDate = expireDate;
-        userCard.verificationCode = parseInt(request.otp);
-        userCard.verified = true;
-        userCard.verifiedDate = new Date();
-        userCard.isDeleted = false;
-        userCard.deletedAt = undefined;
-        userCard.UzcardIsTrusted = isTrusted;
-        userCard.UzcardBalance = balance;
-        userCard.UzcardId = cardId;
-        userCard.UzcardOwner = owner;
-        userCard.UzcardIncompleteNumber = incompleteCardNumber;
-        userCard.UzcardIdForDeleteCard = cardIdForDelete;
-        userCard = await userCard.save();
-      } else {
-        // Create new card
-        logger.info(`Creating new UZCARD card for user: ${user.telegramId}`);
-        userCard = await UserCardsModel.create({
-          telegramId: user.telegramId,
-          username: user.username ? user.username : undefined,
-          incompleteCardNumber: incompleteCardNumber,
-          cardToken: cardId,
-          expireDate: expireDate,
-          verificationCode: request.otp,
-          verified: true,
-          verifiedDate: new Date(),
-          cardType: CardType.UZCARD,
-          userId: user._id,
-          planId: plan._id,
-          UzcardIsTrusted: isTrusted,
-          UzcardBalance: balance,
-          UzcardId: cardId,
-          UzcardOwner: owner,
-          UzcardIncompleteNumber: incompleteCardNumber,
-          UzcardIdForDeleteCard: cardIdForDelete,
-          isDeleted: false,
-          deletedAt: undefined,
-        });
+      if (existingCardByNumber) {
+        return {
+          success: false,
+          errorCode: 'card_already_exists',
+          message:
+            'Bu karta raqam mavjud. Iltimos boshqa karta raqamini tanlang.',
+        };
       }
+
+      const userCard = await UserCardsModel.findOneAndUpdate(
+        { telegramId: user.telegramId, cardType: CardType.UZCARD },
+        {
+          $set: {
+            telegramId: user.telegramId,
+            username: user.username ? user.username : undefined,
+            userId: user._id,
+            planId: plan._id as any,
+            incompleteCardNumber,
+            cardToken: cardId,
+            expireDate,
+            verificationCode: parseInt(request.otp),
+            verified: true,
+            verifiedDate: new Date(),
+            cardType: CardType.UZCARD,
+            UzcardIsTrusted: isTrusted,
+            UzcardBalance: balance,
+            UzcardId: cardId,
+            UzcardOwner: owner,
+            UzcardIncompleteNumber: incompleteCardNumber,
+            UzcardIdForDeleteCard: cardIdForDelete,
+            isDeleted: false,
+            deletedAt: undefined,
+          },
+        },
+        { new: true, upsert: true },
+      );
 
       logger.info(`User card created: ${JSON.stringify(userCard)}`);
 
