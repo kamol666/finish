@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, InternalServerErrorException } from '@nestjs/common';
 import mongoose from 'mongoose';
 import { CancelSubscriptionDto } from './dto/cancel-subscription.dto';
 import { CardType, IUserCardsDocument, UserCardsModel } from 'src/shared/database/models/user-cards.model';
@@ -43,50 +43,78 @@ export class SubscriptionManagementService {
       }
     }
 
+    const applyCancellationUpdates = async (
+      session?: mongoose.ClientSession,
+    ): Promise<void> => {
+      const options = session ? { session } : undefined;
+
+      await UserCardsModel.updateMany(
+        { userId: user._id, isDeleted: { $ne: true } },
+        {
+          $set: {
+            isDeleted: true,
+            deletedAt: now,
+          },
+        },
+        options,
+      );
+
+      await UserSubscription.updateMany(
+        { user: user._id, isActive: true },
+        {
+          $set: {
+            isActive: false,
+            autoRenew: false,
+            status: 'cancelled',
+            endDate: now,
+          },
+        },
+        options,
+      );
+
+      await UserModel.updateOne(
+        { _id: user._id },
+        {
+          $set: {
+            isActive: false,
+            subscriptionEnd: now,
+          },
+          $unset: {
+            activeInviteLink: '',
+          },
+        },
+        options,
+      );
+    };
+
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
-        await UserCardsModel.updateMany(
-          { userId: user._id, isDeleted: { $ne: true } },
-          {
-            $set: {
-              isDeleted: true,
-              deletedAt: now,
-            },
-          },
-        )
-          .session(session)
-          .exec();
-
-        await UserSubscription.updateMany(
-          { user: user._id, isActive: true },
-          {
-            $set: {
-              isActive: false,
-              autoRenew: false,
-              status: 'cancelled',
-              endDate: now,
-            },
-          },
-        )
-          .session(session)
-          .exec();
-
-        await UserModel.updateOne(
-          { _id: user._id },
-          {
-            $set: {
-              isActive: false,
-              subscriptionEnd: now,
-            },
-            $unset: {
-              activeInviteLink: '',
-            },
-          },
-        )
-          .session(session)
-          .exec();
+        await applyCancellationUpdates(session);
       });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : String(error ?? '');
+
+      if (
+        message.includes('Transaction') ||
+        message.includes('replica set') ||
+        message.includes('transact')
+      ) {
+        logger.warn(
+          `Transactions unsupported for subscription cancellation, applying fallback update flow for user=${user._id}`,
+          { error: message },
+        );
+        await applyCancellationUpdates();
+      } else {
+        logger.error(
+          `Subscription cancellation failed for user=${user._id}`,
+          error,
+        );
+        throw new InternalServerErrorException(
+          'Obunani bekor qilishda xatolik yuz berdi.',
+        );
+      }
     } finally {
       await session.endSession();
     }
