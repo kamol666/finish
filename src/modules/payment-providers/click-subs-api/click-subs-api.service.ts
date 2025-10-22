@@ -388,6 +388,13 @@ export class ClickSubsApiService {
                 return true;
             }
 
+            if (response.data?.error_code === -21) {
+                logger.warn(
+                    'Click reported card already inactive during deletion. Treating as success.',
+                );
+                return true;
+            }
+
             logger.error(
                 `Failed to delete Click card. Response: ${JSON.stringify(response.data)}`
             );

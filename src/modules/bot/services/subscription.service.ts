@@ -130,13 +130,13 @@ export class SubscriptionService {
       endDate = new Date(currentEndDate);
       endDate.setDate(endDate.getDate() + bonusDays);
       logger.info(
-        `Extending current ${service || 'football'} subscription with bonus. Adding ${bonusDays} days. New endDate: ${endDate}`,
+        `Extending current ${service || ''} subscription with bonus. Adding ${bonusDays} days. New endDate: ${endDate}`,
       );
     } else {
       // Start new subscription with bonus
       endDate.setDate(now.getDate() + bonusDays);
       logger.info(
-        `Starting new ${service || 'football'} subscription with bonus of ${bonusDays} days. New endDate: ${endDate}`,
+        `Starting new ${service || ''} subscription with bonus of ${bonusDays} days. New endDate: ${endDate}`,
       );
     }
 
