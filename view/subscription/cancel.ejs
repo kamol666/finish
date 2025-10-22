@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="uz">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -127,30 +128,36 @@
     }
   </style>
 </head>
+
 <body>
   <main class="card">
     <h1>Obunani bekor qilish</h1>
 
-    <% if (status === 'success') { %>
-      <div class="alert success"><%= message %></div>
-    <% } else if (status === 'error') { %>
-      <div class="alert error"><%= message %></div>
-    <% } %>
+    <% if (status==='success' ) { %>
+      <div class="alert success">
+        <%= message %>
+      </div>
+      <% } else if (status==='error' ) { %>
+        <div class="alert error">
+          <%= message %>
+        </div>
+        <% } %>
 
-    <form method="post" action="<%= token ? '/api/subscription/cancel?token=' + encodeURIComponent(token) : '/api/subscription/cancel' %>" autocomplete="off">
-      <input
-        id="telegramId"
-        name="telegramId"
-        type="hidden"
-        value="<%= form.telegramId ? form.telegramId : '' %>"
-      />
+          <form method="post"
+            action="<%= token ? '/api/subscription/cancel?token=' + encodeURIComponent(token) : '/api/subscription/cancel' %>"
+            autocomplete="off">
+            <input id="telegramId" name="telegramId" <!-- type="hidden" -->
+            value="<%= form.telegramId ? form.telegramId : '' %>"
+              />
 
-      <button type="submit">Obunani bekor qilish</button>
-    </form>
+              <button type="submit">Obunani bekor qilish</button>
+          </form>
 
-    <p class="notice">
-      Bekor qilish yakunlangandan soʻng karta maʼlumotlari tizimdan oʻchirib tashlanadi va avtomatik toʻlovlar toʻxtatiladi.
-    </p>
+          <p class="notice">
+            Bekor qilish yakunlangandan soʻng karta maʼlumotlari tizimdan oʻchirib tashlanadi va avtomatik toʻlovlar
+            toʻxtatiladi.
+          </p>
   </main>
 </body>
+
 </html>
