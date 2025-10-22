@@ -146,7 +146,7 @@
           <form method="post"
             action="<%= token ? '/api/subscription/cancel?token=' + encodeURIComponent(token) : '/api/subscription/cancel' %>"
             autocomplete="off">
-            <input id="telegramId" name="telegramId">
+            <input id="telegramId" name="telegramId" type="text" 
             value="<%= form.telegramId ? form.telegramId : '' %>"
               />
 
