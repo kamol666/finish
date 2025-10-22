@@ -72,11 +72,8 @@ export class SubscriptionManagementService {
       );
 
       await UserSubscription.updateMany(
-        //        { user: user._id, isActive: true },
-        {
-          user: user.telegramId, isActive: true
-        },
-
+            { user: user._id, isActive: true },
+      
         {
           $set: {
             isActive: false,
