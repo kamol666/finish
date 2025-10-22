@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit, HttpException } from '@nestjs/common';
 import { Bot, Context, InlineKeyboard, session, SessionFlavor } from 'grammy';
 import { config, SubscriptionType } from '../../shared/config';
 import { SubscriptionService } from './services/subscription.service';
@@ -20,6 +20,7 @@ import {
   Transaction,
   TransactionStatus,
 } from '../../shared/database/models/transactions.model';
+import { SubscriptionManagementService } from '../subscription-management/subscription-management.service';
 
 interface SessionData {
   pendingSubscription?: {
@@ -29,6 +30,7 @@ interface SessionData {
   selectedService: string;
   mainMenuMessageId?: number;
   pendingOnetimePlanId?: string;
+  pendingCancellation?: boolean;
 }
 
 type BotContext = Context & SessionFlavor<SessionData>;
@@ -43,7 +45,9 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
   private readonly subscriptionTermsLink: string;
 
 
-  constructor() {
+  constructor(
+    private readonly subscriptionManagementService: SubscriptionManagementService,
+  ) {
     this.bot = new Bot<BotContext>(config.BOT_TOKEN);
     this.subscriptionService = new SubscriptionService(this.bot);
     this.subscriptionMonitorService = new SubscriptionMonitorService(this.bot);
@@ -562,6 +566,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       subscribe: this.handleSubscribeCallback.bind(this),
       check_status: this.handleStatus.bind(this),
       cancel_subscription: this.handleSubscriptionCancellation.bind(this),
+      confirm_cancel_subscription: this.handleConfirmSubscriptionCancellation.bind(this),
       main_menu: this.showMainMenu.bind(this),
       confirm_subscribe_basic: this.confirmSubscription.bind(this),
       agree_terms: this.handleAgreement.bind(this),
@@ -582,6 +587,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
 
   private async showMainMenu(ctx: BotContext): Promise<void> {
     ctx.session.hasAgreedToTerms = false;
+    ctx.session.pendingCancellation = false;
 
     const keyboard = new InlineKeyboard()
       .text("🎯 Obuna bo'lish", 'subscribe')
@@ -974,22 +980,17 @@ ${expirationLabel} ${subscriptionEndDate}`;
         return;
       }
 
-      const link = buildSubscriptionCancellationLink(telegramId);
-      if (!link) {
-        await ctx.answerCallbackQuery({
-          text: 'Bekor qilish havolasini yaratib bo‘lmadi. Keyinroq urinib ko‘ring.',
-          show_alert: true,
-        } as any);
-        return;
-      }
-
+      ctx.session.pendingCancellation = true;
       const keyboard = new InlineKeyboard()
-        .url('🛑 Obunani bekor qilish', link)
+        .text('✅ Tasdiqlayman', 'confirm_cancel_subscription')
         .row()
         .text('🔙 Asosiy menyu', 'main_menu');
 
+      await ctx.answerCallbackQuery({
+        text: 'Bekor qilishni tasdiqlang.',
+      } as any);
       await ctx.editMessageText(
-        'Obunani bekor qilish uchun quyidagi havoladan foydalaning. Havola shaxsiy va faqat siz uchun amal qiladi.',
+        'Obunani bekor qilishni tasdiqlaysizmi?\n\n⚠️ Tasdiqlashdan so‘ng kartangiz o‘chiriladi va avtomatik to‘lovlar to‘xtaydi.',
         {
           reply_markup: keyboard,
           parse_mode: 'HTML',
@@ -999,6 +1000,89 @@ ${expirationLabel} ${subscriptionEndDate}`;
       logger.error('Subscription cancellation link error:', error);
       await ctx.answerCallbackQuery({
         text: 'Bekor qilish havolasini olishda xatolik yuz berdi.',
+        show_alert: true,
+      } as any);
+    }
+  }
+
+  private async handleConfirmSubscriptionCancellation(ctx: BotContext): Promise<void> {
+    try {
+      if (!ctx.session.pendingCancellation) {
+        await ctx.answerCallbackQuery({
+          text: 'Bekor qilish so‘rovi topilmadi. Iltimos, menyudan qaytadan urinib ko‘ring.',
+          show_alert: true,
+        } as any);
+        return;
+      }
+
+      const telegramId = ctx.from?.id;
+      if (!telegramId) {
+        await ctx.answerCallbackQuery({
+          text: "Foydalanuvchi ID'sini olishda xatolik yuz berdi.",
+          show_alert: true,
+        } as any);
+        return;
+      }
+
+      const result = await this.subscriptionManagementService.cancelSubscription({
+        telegramId: String(telegramId),
+      });
+
+      ctx.session.pendingCancellation = false;
+
+      const keyboard = new InlineKeyboard().text('🔙 Asosiy menyu', 'main_menu');
+
+      await ctx.answerCallbackQuery({
+        text: 'Obuna bekor qilindi.',
+      } as any);
+
+      await ctx.editMessageText(
+        `${result.message}\n\nKartangiz maʼlumotlari tizimdan o‘chirildi.`,
+        {
+          reply_markup: keyboard,
+          parse_mode: 'HTML',
+        },
+      );
+    } catch (error) {
+      ctx.session.pendingCancellation = false;
+      logger.error('Subscription cancellation via bot failed:', error);
+
+      if (error instanceof HttpException) {
+        const response = error.getResponse();
+        let message = error.message;
+
+        if (typeof response === 'string') {
+          message = response;
+        } else if (
+          typeof response === 'object' &&
+          response &&
+          'message' in response
+        ) {
+          const detailed = Array.isArray(response['message'])
+            ? response['message'][0]
+            : response['message'];
+          if (typeof detailed === 'string') {
+            message = detailed;
+          }
+        }
+
+        await ctx.answerCallbackQuery({
+          text: message,
+          show_alert: true,
+        } as any);
+        return;
+      }
+
+      if (error instanceof Error && /Foydalanuvchi topilmadi/i.test(error.message)) {
+        await ctx.answerCallbackQuery({
+          text: 'Foydalanuvchi topilmadi yoki obuna allaqachon bekor qilingan.',
+          show_alert: true,
+        } as any);
+        return;
+      }
+
+      await ctx.answerCallbackQuery({
+        text: 'Obunani bekor qilishda xatolik yuz berdi. Keyinroq urinib ko‘ring.',
         show_alert: true,
       } as any);
     }
