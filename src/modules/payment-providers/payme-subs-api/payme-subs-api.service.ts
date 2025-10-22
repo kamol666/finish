@@ -213,6 +213,23 @@ export class PaymeSubsApiService {
             }
 
             try {
+                const verifiedCardToken =
+                    response.data?.result?.card?.token || requestBody.token;
+
+                if (!verifiedCardToken) {
+                    logger.error(
+                        'Payme verify response did not include a card token and request token is missing.',
+                    );
+                    return {
+                        success: false,
+                        error: {
+                            code: -7,
+                            message:
+                                'Karta tokenini olishda muammo yuz berdi. Iltimos qaytadan urinib ko\'ring.',
+                        },
+                    };
+                }
+
                 const time = Date.now();
                 logger.info(`Creating/updating user card for user ID: ${requestBody.userId}, with card token: ${requestBody.token}`);
 
@@ -258,7 +275,7 @@ export class PaymeSubsApiService {
                 userCard.userId = requestBody.userId as any;
                 userCard.planId = requestBody.planId as any;
                 userCard.incompleteCardNumber = response.data.result.card.number;
-                userCard.cardToken = response.data.result.card.token;
+                userCard.cardToken = verifiedCardToken;
                 userCard.expireDate = response.data.result.card.expire;
                 userCard.verificationCode = parseInt(requestBody.code);
                 userCard.verified = true;

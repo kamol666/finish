@@ -164,7 +164,13 @@ export class SubscriptionManagementService {
   private async removeProviderCard(card: IUserCardsDocument): Promise<boolean> {
     switch (card.cardType) {
       case CardType.PAYME:
-        return this.paymeSubsApiService.removeCard(card.cardToken);
+        if (!card.cardToken || !card.cardToken.trim()) {
+          logger.warn(
+            `Skip Payme card removal due to empty token for card ${card._id.toString()}`,
+          );
+          return true;
+        }
+        return this.paymeSubsApiService.removeCard(card.cardToken.trim());
       case CardType.CLICK:
         return this.clickSubsApiService.deleteCard(card.cardToken);
       case CardType.UZCARD:
