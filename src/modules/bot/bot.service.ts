@@ -725,7 +725,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
         subscriptionEndDate = `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
       }
 
-      const message = `🎫 <b>Obuna ma'lumotlari:</b>\n
+      let message = `🎫 <b>Obuna ma'lumotlari:</b>\n
 📅 Holati: ${status}
 📆 Obuna bo'lgan sana: ${subscriptionStartDate}
 ${expirationLabel} ${subscriptionEndDate}`;
@@ -741,6 +741,11 @@ ${expirationLabel} ${subscriptionEndDate}`;
 
         keyboard.row();
         keyboard.url('🔗 Kanalga kirish', privateLink.invite_link);
+        const cancellationLink = buildSubscriptionCancellationLink(subscription.telegramId);
+        if (cancellationLink) {
+          keyboard.row().url('❌ Obunani bekor qilish', cancellationLink);
+        }
+        message += `\n\n❌ Obunani bekor qilish uchun pastdagi tugmadan foydalaning.`;
       } else {
         keyboard.text("🎯 Qayta obuna bo'lish", 'subscribe');
       }
