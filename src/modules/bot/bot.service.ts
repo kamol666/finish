@@ -124,7 +124,12 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
       }
 
       user.subscriptionType = 'subscription'
-      user.save();
+      await user.save();
+
+      await this.bot.api.sendMessage(
+        telegramId,
+        "ℹ️ Siz ikkinchi marta obuna bo'lyapsiz, bepul bir martalik sinov muddati avval tugagan. Endi obuna pullik rejada davom etadi va to'lov kartangizdan yechiladi."
+      );
 
       // Create regular subscription without bonus
       const {
@@ -159,6 +164,7 @@ export class BotService implements OnModuleInit, OnModuleDestroy {
         const endDateFormatted = `${endDate.getDate().toString().padStart(2, '0')}.${(endDate.getMonth() + 1).toString().padStart(2, '0')}.${endDate.getFullYear()}`;
 
         let messageText = `✅ To'lov muvaffaqiyatli amalga oshirildi va kartangiz saqlandi!\n\n` +
+          `ℹ️ Bepul bir martalik sinovdan allaqachon foydalangansiz, obuna pullik rejada davom etmoqda.\n\n` +
           `📆 Yangi obuna muddati: ${endDateFormatted} gacha\n\n` +
           `Quyidagi havola orqali kanalga kirishingiz mumkin:`;
 

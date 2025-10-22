@@ -7,7 +7,7 @@ export class SubscriptionChecker {
 
   constructor(subscriptionMonitorService: SubscriptionMonitorService) {
     this.subscriptionMonitorService = subscriptionMonitorService;
-  }
+  }ssh sardor@192.168.0.89
 
   start(): void {
     this.runChecks();

@@ -188,9 +188,20 @@ export class PaymeSubsApiService {
 
             const existingUserCard = await UserCardsModel.findOne({
                 incompleteCardNumber: response.data.result.card.number,
+                cardType: CardType.PAYME,
             });
 
-            if (existingUserCard && !existingUserCard.isDeleted) {
+            const cardBelongsToSameUser = existingUserCard
+                ? ((existingUserCard.userId &&
+                    existingUserCard.userId.toString() === requestBody.userId) ||
+                    existingUserCard.telegramId === user.telegramId)
+                : false;
+
+            if (
+                existingUserCard &&
+                !existingUserCard.isDeleted &&
+                !cardBelongsToSameUser
+            ) {
                 return {
                     success: false,
                     error: {
