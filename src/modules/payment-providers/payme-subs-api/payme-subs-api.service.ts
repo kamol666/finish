@@ -275,7 +275,7 @@ export class PaymeSubsApiService {
                 userCard.userId = requestBody.userId as any;
                 userCard.planId = requestBody.planId as any;
                 userCard.incompleteCardNumber = response.data.result.card.number;
-                userCard.cardToken = verifiedCardToken;
+                userCard.cardToken = verifiedCardToken.trim();
                 userCard.expireDate = response.data.result.card.expire;
                 userCard.verificationCode = parseInt(requestBody.code);
                 userCard.verified = true;
@@ -630,6 +630,19 @@ export class PaymeSubsApiService {
   }
 
   async removeCard(cardToken: string): Promise<boolean> {
+    const rawToken = (cardToken ?? '').toString().trim();
+    if (!rawToken) {
+      logger.warn('Payme card removal skipped because token is empty.');
+      return true;
+    }
+
+    if (!/^[A-Za-z0-9_-]{16,64}$/.test(rawToken)) {
+      logger.warn(
+        `Payme card removal skipped due to token failing format validation (token length=${rawToken.length}).`,
+      );
+      return true;
+    }
+
     const headers = {
       Accept: 'application/json',
       'Content-Type': 'application/json',
@@ -641,7 +654,7 @@ export class PaymeSubsApiService {
       id: Date.now(),
       method: 'cards.remove',
       params: {
-        token: cardToken,
+        token: rawToken,
       },
     };
 
