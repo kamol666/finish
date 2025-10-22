@@ -16,7 +16,7 @@ export class SubscriptionManagementService {
     private readonly paymeSubsApiService: PaymeSubsApiService,
     private readonly clickSubsApiService: ClickSubsApiService,
     private readonly uzcardOnetimeApiService: UzcardOnetimeApiService,
-  ) {}
+  ) { }
 
   async cancelSubscription(dto: CancelSubscriptionDto) {
     const telegramId = this.parseTelegramId(dto.telegramId);
@@ -72,7 +72,11 @@ export class SubscriptionManagementService {
       );
 
       await UserSubscription.updateMany(
-        { user: user._id, isActive: true },
+        //        { user: user._id, isActive: true },
+        {
+          user: user.telegramId, isActive: true
+        },
+
         {
           $set: {
             isActive: false,
